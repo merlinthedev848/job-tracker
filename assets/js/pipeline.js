@@ -6,6 +6,30 @@ $(function() {
     init_live_search_and_filters();
     init_vo_rate_widget();
 
+    // Prevent browser "Leave site?" prompts on form submit
+    $(document).on('submit', 'form', function() {
+        $(window).off('beforeunload');
+        window.onbeforeunload = null;
+    });
+
+    // Sync tab pills with URL hash & activate on page load
+    $(document).on('shown.bs.tab', 'a[data-toggle="tab"]', function (e) {
+        var hash = $(e.target).attr('href');
+        if (hash && hash.startsWith('#tab_')) {
+            if (history.replaceState) {
+                history.replaceState(null, null, hash);
+            } else {
+                location.hash = hash;
+            }
+        }
+    });
+
+    // Auto-switch to tab specified in hash
+    var initialHash = window.location.hash;
+    if (initialHash && $('a[href="' + initialHash + '"]').length > 0) {
+        $('a[href="' + initialHash + '"]').tab('show');
+    }
+
     // Auto-update commission when source changes in modal
     $('#source_id').on('change', function() {
         var selected = $(this).find(':selected');

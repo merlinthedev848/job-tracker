@@ -2,7 +2,7 @@
 
 <div class="modal fade" id="talent_job_modal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-lg" role="document">
-        <?php echo form_open(admin_url('ckm_talent_pipeline/save'), ['id' => 'talent_job_form']); ?>
+        <?php echo form_open(admin_url('ckm_talent_pipeline/save'), ['id' => 'talent_job_form', 'class' => 'no-unsaved-warning']); ?>
         <input type="hidden" name="id" id="job_id" value="">
         
         <div class="modal-content">

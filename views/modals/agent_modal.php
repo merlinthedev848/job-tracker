@@ -3,7 +3,7 @@
 <!-- Add / Edit Agency Representation Modal -->
 <div class="modal fade" id="agent_modal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-md" role="document">
-        <?php echo form_open(admin_url('ckm_talent_pipeline/save_agent')); ?>
+        <?php echo form_open(admin_url('ckm_talent_pipeline/save_agent'), ['class' => 'no-unsaved-warning']); ?>
         <input type="hidden" name="id" id="agent_profile_id" value="">
         <div class="modal-content">
             <div class="modal-header">

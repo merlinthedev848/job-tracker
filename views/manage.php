@@ -449,7 +449,7 @@
                                         <div class="panel panel-default">
                                             <div class="panel-heading bold"><i class="fa fa-microphone text-info"></i> Voice Actor Studio Profile & Tech Specs</div>
                                             <div class="panel-body">
-                                                <?php echo form_open(admin_url('ckm_talent_pipeline/save_studio_profile')); ?>
+                                                <?php echo form_open(admin_url('ckm_talent_pipeline/save_studio_profile'), ['class' => 'no-unsaved-warning']); ?>
                                                 <div class="row">
                                                     <div class="col-md-3">
                                                         <label class="control-label bold">Performer / Stage Name:</label>
@@ -550,7 +550,7 @@
                                                 <p class="text-muted font-xs mbot15">
                                                     Configure your casting inbox below. When the background cron runs (or when you click Check Inbox), the monitor scans for casting keywords (e.g. <em>Audition, Casting, VO, BSF, Buyout</em>) and automatically extracts the project into your <strong>Inbound Casting Queue</strong>.
                                                 </p>
-                                                <?php echo form_open(admin_url('ckm_talent_pipeline/save_imap')); ?>
+                                                <?php echo form_open(admin_url('ckm_talent_pipeline/save_imap'), ['class' => 'no-unsaved-warning']); ?>
                                                 <div class="row">
                                                     <div class="col-md-3">
                                                         <label class="control-label bold">IMAP Host Server:</label>
@@ -752,7 +752,7 @@
 <!-- Goal Setting Modal -->
 <div class="modal fade" id="goal_modal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-sm" role="document">
-        <?php echo form_open(admin_url('ckm_talent_pipeline/save_goal')); ?>
+        <?php echo form_open(admin_url('ckm_talent_pipeline/save_goal'), ['class' => 'no-unsaved-warning']); ?>
         <div class="modal-content">
             <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal">&times;</button>

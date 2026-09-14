@@ -3,7 +3,7 @@
 <!-- Add / Edit Voice Actor Expense Modal -->
 <div class="modal fade" id="expense_modal" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-md" role="document">
-        <?php echo form_open(admin_url('ckm_talent_pipeline/save_expense')); ?>
+        <?php echo form_open(admin_url('ckm_talent_pipeline/save_expense'), ['class' => 'no-unsaved-warning']); ?>
         <input type="hidden" name="id" id="expense_id" value="">
         <div class="modal-content">
             <div class="modal-header">

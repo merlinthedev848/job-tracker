@@ -406,7 +406,7 @@ class Ckm_talent_pipeline extends AdminController
             $goal = (float)$this->input->post('monthly_goal');
             update_option('ckm_talent_monthly_goal', $goal);
             set_alert('success', 'Monthly revenue goal updated successfully!');
-            redirect(admin_url('ckm_talent_pipeline'));
+            redirect(admin_url('ckm_talent_pipeline?tab=analytics'));
         }
     }
 
