@@ -11,7 +11,6 @@ $pipeline_columns = [
     'lost'         => ['name' => _l('ckm_tp_status_lost'), 'color' => '#757575', 'icon' => 'fa-times-circle'],
 ];
 
-// Group jobs by status
 $grouped_jobs = [];
 foreach ($pipeline_columns as $status_key => $column_data) {
     $grouped_jobs[$status_key] = [];
@@ -54,7 +53,6 @@ if (!empty($jobs)) {
                 <div class="ckm-kanban-cards-container" id="kanban-col-<?php echo $status_key; ?>" data-status="<?php echo $status_key; ?>">
                     <?php if (!empty($grouped_jobs[$status_key])) { ?>
                         <?php foreach ($grouped_jobs[$status_key] as $job) { 
-                            // Urgency calculations
                             $urgency_class = '';
                             $urgency_label = '';
                             if (!empty($job['delivery_deadline']) && !in_array($job['status'], ['completed', 'lost'])) {
@@ -96,6 +94,7 @@ if (!empty($jobs)) {
                                         </button>
                                         <ul class="dropdown-menu dropdown-menu-right">
                                             <li><a href="#" onclick="edit_talent_job(<?php echo $job['id']; ?>); return false;"><i class="fa fa-pencil"></i> <?php echo _l('edit'); ?></a></li>
+                                            <li><a href="<?php echo admin_url('ckm_talent_pipeline/duplicate/' . $job['id']); ?>"><i class="fa fa-clone text-info"></i> Duplicate (Repeat Job)</a></li>
                                             <?php if (empty($job['perfex_invoice_id']) && !in_array($job['status'], ['lost'])) { ?>
                                                 <li><a href="<?php echo admin_url('ckm_talent_pipeline/convert_to_invoice/' . $job['id']); ?>"><i class="fa fa-file-text-o text-success"></i> <?php echo _l('ckm_tp_convert_to_invoice'); ?></a></li>
                                             <?php } elseif (!empty($job['perfex_invoice_id'])) { ?>
@@ -175,9 +174,12 @@ if (!empty($jobs)) {
                                             <i class="fa fa-microphone"></i> Record
                                         </button>
                                     <?php } ?>
+                                    <a href="<?php echo admin_url('ckm_talent_pipeline/duplicate/' . $job['id']); ?>" class="btn btn-xs btn-default" title="Duplicate / Repeat Booking">
+                                        <i class="fa fa-clone text-info"></i>
+                                    </a>
                                     <?php if ($job['status'] != 'lost') { ?>
                                         <button type="button" class="btn btn-xs btn-default text-danger" onclick="trigger_loss_modal(<?php echo $job['id']; ?>);" title="Mark as Lost">
-                                            <i class="fa fa-times"></i> Lost
+                                            <i class="fa fa-times"></i>
                                         </button>
                                     <?php } ?>
                                 </div>

@@ -26,21 +26,55 @@ class Ckm_talent_pipeline extends AdminController
         }
 
         $data = [];
-        $data['title']          = _l('ckm_tp_menu_pipeline');
-        $data['jobs']           = $this->ckm_talent_pipeline_model->get();
-        $data['clients']        = $this->clients_model->get();
-        $data['categories']     = $this->ckm_talent_pipeline_model->get_categories();
-        $data['sources']        = $this->ckm_talent_pipeline_model->get_sources();
-        $data['loss_reasons']   = $this->ckm_talent_pipeline_model->get_loss_reasons();
-        $data['summary']        = $this->ckm_talent_pipeline_model->get_analytics_summary();
-        $data['category_stats'] = $this->ckm_talent_pipeline_model->get_category_stats();
-        $data['source_stats']   = $this->ckm_talent_pipeline_model->get_source_stats();
-        $data['loss_stats']     = $this->ckm_talent_pipeline_model->get_loss_stats();
+        $data['title']             = _l('ckm_tp_menu_pipeline');
+        $data['jobs']              = $this->ckm_talent_pipeline_model->get();
+        $data['clients']           = $this->clients_model->get();
+        $data['categories']        = $this->ckm_talent_pipeline_model->get_categories();
+        $data['sources']           = $this->ckm_talent_pipeline_model->get_sources();
+        $data['loss_reasons']      = $this->ckm_talent_pipeline_model->get_loss_reasons();
+        $data['summary']           = $this->ckm_talent_pipeline_model->get_analytics_summary();
+        $data['category_stats']    = $this->ckm_talent_pipeline_model->get_category_stats();
+        $data['source_stats']      = $this->ckm_talent_pipeline_model->get_source_stats();
+        $data['loss_stats']        = $this->ckm_talent_pipeline_model->get_loss_stats();
         
-        $data['view_mode']      = $this->input->get('view') ?: 'kanban';
-        $data['active_tab']     = $this->input->get('tab') ?: 'pipeline';
+        // Creative Pro Modules: Sessions, Buyouts Radar, Stay-in-Touch
+        $data['upcoming_sessions'] = $this->ckm_talent_pipeline_model->get_upcoming_sessions();
+        $data['expiring_licenses'] = $this->ckm_talent_pipeline_model->get_expiring_licenses();
+        $data['dormant_clients']   = $this->ckm_talent_pipeline_model->get_dormant_clients();
+        
+        $data['view_mode']         = $this->input->get('view') ?: 'kanban';
+        $data['active_tab']        = $this->input->get('tab') ?: 'pipeline';
 
         $this->load->view('manage', $data);
+    }
+
+    /**
+     * 1-Click Duplicate / Repeat Booking
+     */
+    public function duplicate($id)
+    {
+        if (!has_permission('ckm_talent_pipeline', '', 'create') && !is_admin()) {
+            access_denied('ckm_talent_pipeline');
+        }
+
+        $new_id = $this->ckm_talent_pipeline_model->duplicate($id);
+        if ($new_id) {
+            set_alert('success', 'Job duplicated for repeat booking successfully!');
+        }
+        redirect(admin_url('ckm_talent_pipeline'));
+    }
+
+    /**
+     * Save Monthly Revenue Goal
+     */
+    public function save_goal()
+    {
+        if ($this->input->post()) {
+            $goal = (float)$this->input->post('monthly_goal');
+            update_option('ckm_talent_monthly_goal', $goal);
+            set_alert('success', 'Monthly revenue goal updated successfully!');
+            redirect(admin_url('ckm_talent_pipeline'));
+        }
     }
 
     /**

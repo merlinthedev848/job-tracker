@@ -3,30 +3,91 @@
 
 <div id="wrapper">
     <div class="content">
+        <!-- Monthly Revenue & Goal Tracker Banner -->
+        <div class="row mbot15">
+            <div class="col-md-12">
+                <div class="panel_s mbot0 ckm-goal-tracker-card">
+                    <div class="panel-body p15">
+                        <div class="row align-center display-flex flex-wrap">
+                            <div class="col-md-3">
+                                <span class="text-uppercase font-xs bold text-muted block">This Month's Earnings</span>
+                                <h3 class="bold text-success mtop5 mbot0">
+                                    <?php echo ckm_format_money($summary['month_net_revenue']); ?>
+                                    <small class="font-xs text-muted">/ <?php echo ckm_format_money($summary['monthly_goal']); ?> goal</small>
+                                </h3>
+                            </div>
+                            <div class="col-md-5">
+                                <div class="display-flex justify-between font-xs bold mbot5">
+                                    <span>Goal Progress</span>
+                                    <span class="text-primary"><?php echo $summary['goal_percent']; ?>%</span>
+                                </div>
+                                <div class="progress mbot0" style="height: 12px;">
+                                    <div class="progress-bar progress-bar-success progress-bar-striped" role="progressbar" style="width: <?php echo $summary['goal_percent']; ?>%;"></div>
+                                </div>
+                            </div>
+                            <div class="col-md-3 text-center">
+                                <span class="badge bg-info p8 font-xs" title="Calculated from your historical booking % and average deal size">
+                                    <i class="fa fa-bullseye"></i> ~<?php echo $summary['needed_auditions']; ?> auditions needed to hit goal
+                                </span>
+                            </div>
+                            <div class="col-md-1 text-right">
+                                <button type="button" class="btn btn-default btn-xs" onclick="$('#goal_modal').modal('show');" title="Edit Monthly Goal">
+                                    <i class="fa fa-pencil"></i> Goal
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Directed Sessions Today / Upcoming Banner (if any) -->
+        <?php if (!empty($upcoming_sessions)) { ?>
+            <div class="row mbot15">
+                <div class="col-md-12">
+                    <div class="alert alert-info display-flex justify-between align-center p10 mbot0">
+                        <div>
+                            <i class="fa fa-bolt font-medium mright5"></i>
+                            <strong>Upcoming Directed Sessions:</strong>
+                            <?php foreach (array_slice($upcoming_sessions, 0, 3) as $sess) { ?>
+                                <span class="badge bg-primary mleft5">
+                                    <?php echo date('D, j M H:i', strtotime($sess['session_datetime'])); ?>: 
+                                    <?php echo htmlspecialchars($sess['job_title']); ?> (<?php echo htmlspecialchars($sess['direction_type']); ?>)
+                                    <?php if (!empty($sess['direction_link'])) { ?>
+                                        <a href="<?php echo htmlspecialchars($sess['direction_link']); ?>" target="_blank" class="text-white"><i class="fa fa-external-link"></i></a>
+                                    <?php } ?>
+                                </span>
+                            <?php } ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php } ?>
+
         <!-- Top Metrics Row -->
         <div class="row mbot15">
             <div class="col-md-3">
                 <div class="top_stats_wrapper">
-                    <p class="text-uppercase mtop5"><i class="fa fa-microphone text-info"></i> Total Auditions / Quotes</p>
-                    <p class="text-muted bold font-medium-xs"><?php echo isset($summary['total_auditions']) ? $summary['total_auditions'] : 0; ?></p>
+                    <p class="text-uppercase mtop5"><i class="fa fa-microphone text-info"></i> All-Time Auditions</p>
+                    <p class="text-muted bold font-medium-xs"><?php echo $summary['total_auditions']; ?></p>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="top_stats_wrapper">
                     <p class="text-uppercase mtop5"><i class="fa fa-bullseye text-success"></i> Audition-to-Booking %</p>
-                    <p class="text-success bold font-medium-xs"><?php echo isset($summary['conversion_rate']) ? $summary['conversion_rate'] : 0; ?>%</p>
+                    <p class="text-success bold font-medium-xs"><?php echo $summary['conversion_rate']; ?>%</p>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="top_stats_wrapper">
                     <p class="text-uppercase mtop5"><i class="fa fa-hourglass-half text-warning"></i> Active Pipeline Value</p>
-                    <p class="text-warning bold font-medium-xs"><?php echo ckm_format_money(isset($summary['pipeline_value']) ? $summary['pipeline_value'] : 0); ?></p>
+                    <p class="text-warning bold font-medium-xs"><?php echo ckm_format_money($summary['pipeline_value']); ?></p>
                 </div>
             </div>
             <div class="col-md-3">
                 <div class="top_stats_wrapper">
-                    <p class="text-uppercase mtop5"><i class="fa fa-money text-primary"></i> Net Booked Revenue</p>
-                    <p class="text-primary bold font-medium-xs"><?php echo ckm_format_money(isset($summary['net_revenue']) ? $summary['net_revenue'] : 0); ?></p>
+                    <p class="text-uppercase mtop5"><i class="fa fa-trophy text-primary"></i> Net Lifetime Earnings</p>
+                    <p class="text-primary bold font-medium-xs"><?php echo ckm_format_money($summary['net_revenue']); ?></p>
                 </div>
             </div>
         </div>
@@ -49,8 +110,16 @@
                                 </a>
                             </li>
                             <li role="presentation">
-                                <a href="#tab_settings" aria-controls="tab_settings" role="tab" data-toggle="tab">
-                                    <i class="fa fa-sliders"></i> <strong>Settings & Lookups</strong>
+                                <a href="#tab_buyouts" aria-controls="tab_buyouts" role="tab" data-toggle="tab">
+                                    <i class="fa fa-copyright"></i> <strong>Expiring Buyouts Radar</strong>
+                                    <?php if (!empty($expiring_licenses)) { ?>
+                                        <span class="badge bg-warning"><?php echo count($expiring_licenses); ?></span>
+                                    <?php } ?>
+                                </a>
+                            </li>
+                            <li role="presentation">
+                                <a href="#tab_crm" aria-controls="tab_crm" role="tab" data-toggle="tab">
+                                    <i class="fa fa-users"></i> <strong>Stay-in-Touch & Lookups</strong>
                                 </a>
                             </li>
                         </ul>
@@ -58,30 +127,23 @@
                         <div class="tab-content">
                             <!-- TAB 1: PIPELINE BOARD -->
                             <div role="tabpanel" class="tab-pane active" id="tab_pipeline">
-                                <!-- Command Toolbar -->
                                 <div class="ckm-command-bar mbot20">
                                     <div class="display-flex align-center flex-wrap gap-10">
-                                        <!-- Primary Actions -->
                                         <button type="button" class="btn btn-primary" onclick="new_talent_job();">
                                             <i class="fa fa-plus"></i> <?php echo _l('ckm_tp_new_job'); ?>
                                         </button>
-                                        
-                                        <!-- Smart Casting Email Ingestion Button -->
                                         <button type="button" class="btn btn-info" onclick="$('#smart_parser_modal').modal('show');">
                                             <i class="fa fa-bolt"></i> <strong>Paste Casting Call</strong>
                                         </button>
-
-                                        <!-- VO Rate Calculator Button -->
                                         <button type="button" class="btn btn-success" onclick="$('#rate_calculator_modal').modal('show');">
                                             <i class="fa fa-calculator"></i> <strong>Rate Calculator</strong>
                                         </button>
                                     </div>
 
-                                    <!-- Live Search & View Mode -->
                                     <div class="display-flex align-center gap-10">
                                         <div class="ckm-live-search-box">
                                             <i class="fa fa-search ckm-search-icon"></i>
-                                            <input type="text" id="ckm_search_input" class="form-control" placeholder="Quick search project, client, agent...">
+                                            <input type="text" id="ckm_search_input" class="form-control" placeholder="Quick search project, client, role...">
                                         </div>
 
                                         <div class="btn-group">
@@ -95,10 +157,9 @@
                                     </div>
                                 </div>
 
-                                <!-- Live Filter Genre Pills -->
                                 <div class="ckm-filter-pills-bar mbot15 display-flex align-center flex-wrap gap-5">
-                                    <span class="font-xs bold text-muted mright5"><i class="fa fa-filter"></i> Filter Genre:</span>
-                                    <button type="button" class="btn btn-default btn-xs ckm-genre-filter-btn active" data-cat-id="all">All Genres</button>
+                                    <span class="font-xs bold text-muted mright5"><i class="fa fa-filter"></i> Genre:</span>
+                                    <button type="button" class="btn btn-default btn-xs ckm-genre-filter-btn active" data-cat-id="all">All</button>
                                     <?php if (!empty($categories)) { ?>
                                         <?php foreach ($categories as $cat) { ?>
                                             <button type="button" class="btn btn-default btn-xs ckm-genre-filter-btn" data-cat-id="<?php echo $cat['id']; ?>">
@@ -225,10 +286,101 @@
                                 </div>
                             </div>
 
-                            <!-- TAB 3: SETTINGS & LOOKUPS -->
-                            <div role="tabpanel" class="tab-pane" id="tab_settings">
+                            <!-- TAB 3: EXPIRING BUYOUTS & RENEWALS RADAR -->
+                            <div role="tabpanel" class="tab-pane" id="tab_buyouts">
+                                <div class="alert alert-warning">
+                                    <i class="fa fa-clock-o"></i> <strong>Passive Renewal Engine:</strong> These commercial and corporate buyout licenses are expiring within the next 90 days. Click <strong>"Pitch Buyout Extension"</strong> to quickly duplicate the job into a new quote for license extension.
+                                </div>
+
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-striped">
+                                        <thead>
+                                            <tr>
+                                                <th>Project Title</th>
+                                                <th>Client</th>
+                                                <th>Media / Territory</th>
+                                                <th>Original Term</th>
+                                                <th>Expiry Date</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php if (!empty($expiring_licenses)) { ?>
+                                                <?php foreach ($expiring_licenses as $lic) { 
+                                                    $days_left = round((strtotime($lic['usage_expiry_date']) - time()) / 86400);
+                                                ?>
+                                                    <tr>
+                                                        <td class="bold"><?php echo htmlspecialchars($lic['job_title']); ?></td>
+                                                        <td><?php echo htmlspecialchars($lic['client_company'] ?: '-'); ?></td>
+                                                        <td><?php echo htmlspecialchars($lic['usage_medium'] . ' (' . $lic['usage_territory'] . ')'); ?></td>
+                                                        <td><?php echo htmlspecialchars($lic['usage_duration']); ?></td>
+                                                        <td>
+                                                            <span class="label label-<?php echo ($days_left <= 30) ? 'danger' : 'warning'; ?>">
+                                                                <?php echo _d($lic['usage_expiry_date']); ?> (<?php echo $days_left; ?> days)
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            <a href="<?php echo admin_url('ckm_talent_pipeline/duplicate/' . $lic['id']); ?>" class="btn btn-success btn-xs">
+                                                                <i class="fa fa-refresh"></i> Pitch Buyout Extension
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                <?php } ?>
+                                            <?php } else { ?>
+                                                <tr><td colspan="6" class="text-center text-muted p20">No buyout licenses expiring in the next 90 days.</td></tr>
+                                            <?php } ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <!-- TAB 4: STAY-IN-TOUCH & LOOKUPS -->
+                            <div role="tabpanel" class="tab-pane" id="tab_crm">
+                                <!-- Dormant Clients Section -->
+                                <div class="row mbot20">
+                                    <div class="col-md-12">
+                                        <div class="panel panel-default">
+                                            <div class="panel-heading bold"><i class="fa fa-history text-info"></i> "Stay-in-Touch" Client Follow-Up Radar (No Bookings in 60+ Days)</div>
+                                            <div class="panel-body">
+                                                <div class="table-responsive">
+                                                    <table class="table table-bordered">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Client / Production House</th>
+                                                                <th>Last Worked Together</th>
+                                                                <th>Lifetime Projects</th>
+                                                                <th>Lifetime Revenue</th>
+                                                                <th>Action</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <?php if (!empty($dormant_clients)) { ?>
+                                                                <?php foreach ($dormant_clients as $cl) { ?>
+                                                                    <tr>
+                                                                        <td class="bold"><?php echo htmlspecialchars($cl['company']); ?></td>
+                                                                        <td><?php echo _d(date('Y-m-d', strtotime($cl['last_job_date']))); ?></td>
+                                                                        <td><?php echo $cl['lifetime_jobs']; ?></td>
+                                                                        <td class="text-success bold"><?php echo ckm_format_money($cl['lifetime_revenue']); ?></td>
+                                                                        <td>
+                                                                            <a href="<?php echo admin_url('clients/client/' . $cl['userid']); ?>" class="btn btn-default btn-xs">
+                                                                                <i class="fa fa-envelope-o"></i> View Client Profile & Pitch
+                                                                            </a>
+                                                                        </td>
+                                                                    </tr>
+                                                                <?php } ?>
+                                                            <?php } else { ?>
+                                                                <tr><td colspan="5" class="text-center text-muted">All active clients have worked with you recently!</td></tr>
+                                                            <?php } ?>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Lookup Configuration -->
                                 <div class="row">
-                                    <!-- Categories List -->
                                     <div class="col-md-4">
                                         <h4 class="bold mbot15"><i class="fa fa-tags"></i> Project Genres & Categories</h4>
                                         <ul class="list-group">
@@ -245,7 +397,6 @@
                                         </ul>
                                     </div>
 
-                                    <!-- Sources List -->
                                     <div class="col-md-4">
                                         <h4 class="bold mbot15"><i class="fa fa-user-secret"></i> Lead Sources & Default Commissions</h4>
                                         <ul class="list-group">
@@ -260,7 +411,6 @@
                                         </ul>
                                     </div>
 
-                                    <!-- Loss Reasons List -->
                                     <div class="col-md-4">
                                         <h4 class="bold mbot15"><i class="fa fa-times-circle text-danger"></i> Loss Reasons</h4>
                                         <ul class="list-group">
@@ -282,6 +432,29 @@
                 </div>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- Goal Setting Modal -->
+<div class="modal fade" id="goal_modal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-sm" role="document">
+        <?php echo form_open(admin_url('ckm_talent_pipeline/save_goal')); ?>
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title"><i class="fa fa-bullseye"></i> Set Monthly Target</h4>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="control-label bold">Monthly Net Revenue Goal:</label>
+                    <input type="number" name="monthly_goal" class="form-control" value="<?php echo $summary['monthly_goal']; ?>" step="any" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">Save Goal</button>
+            </div>
+        </div>
+        <?php echo form_close(); ?>
     </div>
 </div>
 

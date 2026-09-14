@@ -5,7 +5,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
 /*
 Module Name: CKM Talent Pipeline & Jobs Tracker
 Description: Specialized Voice Over, Actor & Creative Performer Job, Quote & Audition Pipeline with BSF/Usage tracking and 1-click Perfex Invoicing.
-Version: 1.0.2
+Version: 1.0.3
 Requires at least: 2.3.0
 Author: CKM Solutions
 */
@@ -40,7 +40,6 @@ function ckm_talent_pipeline_init_menu_items()
 {
     $CI = &get_instance();
 
-    // 1. Scan existing sidebar items to find the user's current "CKM Modules" menu slug
     $parent_slug = null;
     $sidebar_items = $CI->app_menu->get_sidebar_menu_items();
 
@@ -56,7 +55,6 @@ function ckm_talent_pipeline_init_menu_items()
         }
     }
 
-    // 2. Fallback if no CKM Modules parent menu exists
     if (!$parent_slug) {
         $parent_slug = 'ckm_modules';
         $CI->app_menu->add_sidebar_menu_item($parent_slug, [
@@ -66,7 +64,6 @@ function ckm_talent_pipeline_init_menu_items()
         ]);
     }
 
-    // 3. Inject EXACTLY ONE single child item for Jobs/Quotes Tracker
     $CI->app_menu->add_sidebar_children_item($parent_slug, [
         'slug'     => 'ckm_talent_pipeline_board',
         'name'     => _l('ckm_tp_menu_pipeline'),

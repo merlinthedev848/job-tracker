@@ -26,6 +26,9 @@
                             <a href="#" onclick="edit_talent_job(<?php echo $job['id']; ?>); return false;" class="bold">
                                 <?php echo htmlspecialchars($job['job_title']); ?>
                             </a>
+                            <?php if (!empty($job['audio_link'])) { ?>
+                                <a href="<?php echo htmlspecialchars($job['audio_link']); ?>" target="_blank" class="text-info mleft5" title="Listen Audio Take"><i class="fa fa-play-circle"></i></a>
+                            <?php } ?>
                         </td>
                         <td><?php echo htmlspecialchars($job['client_company'] ?: ($job['agent_name'] ?: '-')); ?></td>
                         <td>
@@ -63,6 +66,9 @@
                             <button class="btn btn-default btn-xs" onclick="edit_talent_job(<?php echo $job['id']; ?>); return false;" title="<?php echo _l('edit'); ?>">
                                 <i class="fa fa-pencil"></i>
                             </button>
+                            <a href="<?php echo admin_url('ckm_talent_pipeline/duplicate/' . $job['id']); ?>" class="btn btn-default btn-xs" title="Duplicate / Repeat Booking">
+                                <i class="fa fa-clone text-info"></i>
+                            </a>
                             <?php if (empty($job['perfex_invoice_id']) && !in_array($job['status'], ['lost'])) { ?>
                                 <a href="<?php echo admin_url('ckm_talent_pipeline/convert_to_invoice/' . $job['id']); ?>" class="btn btn-success btn-xs" title="<?php echo _l('ckm_tp_convert_to_invoice'); ?>">
                                     <i class="fa fa-file-text-o"></i>

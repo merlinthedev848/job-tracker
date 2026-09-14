@@ -51,6 +51,49 @@ class Ckm_talent_pipeline_model extends App_Model
     }
 
     /**
+     * Duplicate / Clone a Job for Repeat Bookings
+     */
+    public function duplicate($id)
+    {
+        $job = $this->get($id);
+        if (!$job) return false;
+
+        $clone = [
+            'job_title'          => $job->job_title . ' (Repeat)',
+            'client_id'          => $job->client_id,
+            'agent_name'         => $job->agent_name,
+            'source_id'          => $job->source_id,
+            'category_id'        => $job->category_id,
+            'status'             => 'quote_sent',
+            'role_name'          => $job->role_name,
+            'word_count'         => $job->word_count,
+            'duration_seconds'   => $job->duration_seconds,
+            'bsf_amount'         => $job->bsf_amount,
+            'usage_amount'       => $job->usage_amount,
+            'commission_percent' => $job->commission_percent,
+            'total_amount'       => $job->total_amount,
+            'net_amount'         => $job->net_amount,
+            'usage_medium'       => $job->usage_medium,
+            'usage_territory'    => $job->usage_territory,
+            'usage_duration'     => $job->usage_duration,
+            'direction_type'     => $job->direction_type,
+            'direction_link'     => $job->direction_link,
+            'audio_specs'        => $job->audio_specs,
+            'notes'              => $job->notes,
+            'date_created'       => date('Y-m-d H:i:s'),
+            'date_updated'       => date('Y-m-d H:i:s')
+        ];
+
+        $this->db->insert(db_prefix() . 'ckm_talent_jobs', $clone);
+        $insert_id = $this->db->insert_id();
+
+        if ($insert_id && function_exists('log_activity')) {
+            log_activity('Duplicated Talent Job [Original ID: ' . $id . ' to New ID: ' . $insert_id . ']');
+        }
+        return $insert_id;
+    }
+
+    /**
      * Add new job / audition
      */
     public function add($data)
@@ -244,7 +287,63 @@ class Ckm_talent_pipeline_model extends App_Model
     }
 
     /**
-     * Expiring license notification
+     * Expiring Buyouts Radar (Next 90 Days)
+     */
+    public function get_expiring_licenses()
+    {
+        $today = date('Y-m-d');
+        $in_90_days = date('Y-m-d', strtotime('+90 days'));
+
+        $this->db->select(db_prefix() . 'ckm_talent_jobs.*, ' . db_prefix() . 'clients.company as client_company');
+        $this->db->from(db_prefix() . 'ckm_talent_jobs');
+        $this->db->join(db_prefix() . 'clients', db_prefix() . 'clients.userid = ' . db_prefix() . 'ckm_talent_jobs.client_id', 'left');
+        $this->db->where('usage_expiry_date >=', $today);
+        $this->db->where('usage_expiry_date <=', $in_90_days);
+        $this->db->order_by('usage_expiry_date', 'asc');
+        $res = $this->db->get();
+        return $res ? $res->result_array() : [];
+    }
+
+    /**
+     * Upcoming Directed Sessions (Next 7 Days)
+     */
+    public function get_upcoming_sessions()
+    {
+        $now = date('Y-m-d 00:00:00');
+        $in_7_days = date('Y-m-d 23:59:59', strtotime('+7 days'));
+
+        $this->db->select(db_prefix() . 'ckm_talent_jobs.*, ' . db_prefix() . 'clients.company as client_company');
+        $this->db->from(db_prefix() . 'ckm_talent_jobs');
+        $this->db->join(db_prefix() . 'clients', db_prefix() . 'clients.userid = ' . db_prefix() . 'ckm_talent_jobs.client_id', 'left');
+        $this->db->where('session_datetime >=', $now);
+        $this->db->where('session_datetime <=', $in_7_days);
+        $this->db->order_by('session_datetime', 'asc');
+        $res = $this->db->get();
+        return $res ? $res->result_array() : [];
+    }
+
+    /**
+     * Stay-in-Touch Radar (Clients with no activity in 60+ days)
+     */
+    public function get_dormant_clients()
+    {
+        $table_jobs    = db_prefix() . 'ckm_talent_jobs';
+        $table_clients = db_prefix() . 'clients';
+
+        $query = "SELECT c.userid, c.company, MAX(j.date_created) as last_job_date, COUNT(j.id) as lifetime_jobs, SUM(j.net_amount) as lifetime_revenue
+                  FROM $table_clients c
+                  JOIN $table_jobs j ON j.client_id = c.userid
+                  GROUP BY c.userid
+                  HAVING last_job_date < DATE_SUB(NOW(), INTERVAL 60 DAY)
+                  ORDER BY lifetime_revenue DESC
+                  LIMIT 10";
+
+        $res = $this->db->query($query);
+        return $res ? $res->result_array() : [];
+    }
+
+    /**
+     * Expiring license notification cron
      */
     public function check_and_notify_expiring_licenses()
     {
@@ -347,23 +446,48 @@ class Ckm_talent_pipeline_model extends App_Model
 
         $conversion_rate = ($total_auditions > 0) ? round(($won_jobs / $total_auditions) * 100, 1) : 0;
 
+        // Lifetime Revenue
         $this->db->select_sum('total_amount', 'gross_revenue');
         $this->db->select_sum('net_amount', 'net_revenue');
         $this->db->where_in('status', ['won', 'in_progress', 'delivered', 'completed']);
         $revenue = $this->db->get($table_jobs)->row();
 
+        // This Month's Booked Net Revenue
+        $first_day_month = date('Y-m-01 00:00:00');
+        $this->db->select_sum('net_amount', 'month_net_revenue');
+        $this->db->where_in('status', ['won', 'in_progress', 'delivered', 'completed']);
+        $this->db->where('date_created >=', $first_day_month);
+        $month_rev = $this->db->get($table_jobs)->row();
+
+        // Pipeline Value
         $this->db->select_sum('total_amount', 'pipeline_value');
         $this->db->where_in('status', ['quote_sent', 'shortlisted']);
         $pipeline = $this->db->get($table_jobs)->row();
 
+        // Monthly Target Goal
+        $monthly_goal = (float)get_option('ckm_talent_monthly_goal') ?: 3000.00;
+        $current_month_net = ($month_rev && $month_rev->month_net_revenue) ? (float)$month_rev->month_net_revenue : 0.00;
+        $goal_percent = ($monthly_goal > 0) ? min(100, round(($current_month_net / $monthly_goal) * 100)) : 0;
+
+        // Auditions needed calculation (Goal remainder ÷ avg revenue per win ÷ conversion rate)
+        $avg_deal_size = ($won_jobs > 0 && $revenue && $revenue->net_revenue) ? ($revenue->net_revenue / $won_jobs) : 350.00;
+        $remaining_goal = max(0, $monthly_goal - $current_month_net);
+        $needed_wins = ceil($remaining_goal / max(100, $avg_deal_size));
+        $needed_auditions = ($conversion_rate > 0) ? ceil($needed_wins / ($conversion_rate / 100)) : ($needed_wins * 5);
+
         return [
-            'total_auditions' => (int)$total_auditions,
-            'won_jobs'        => (int)$won_jobs,
-            'lost_jobs'       => (int)$lost_jobs,
-            'conversion_rate' => $conversion_rate,
-            'gross_revenue'   => ($revenue && $revenue->gross_revenue) ? (float)$revenue->gross_revenue : 0.00,
-            'net_revenue'     => ($revenue && $revenue->net_revenue) ? (float)$revenue->net_revenue : 0.00,
-            'pipeline_value'  => ($pipeline && $pipeline->pipeline_value) ? (float)$pipeline->pipeline_value : 0.00,
+            'total_auditions'    => (int)$total_auditions,
+            'won_jobs'           => (int)$won_jobs,
+            'lost_jobs'          => (int)$lost_jobs,
+            'conversion_rate'    => $conversion_rate,
+            'gross_revenue'      => ($revenue && $revenue->gross_revenue) ? (float)$revenue->gross_revenue : 0.00,
+            'net_revenue'        => ($revenue && $revenue->net_revenue) ? (float)$revenue->net_revenue : 0.00,
+            'month_net_revenue'  => $current_month_net,
+            'monthly_goal'       => $monthly_goal,
+            'goal_percent'       => $goal_percent,
+            'needed_auditions'   => $needed_auditions,
+            'avg_deal_size'      => round($avg_deal_size, 2),
+            'pipeline_value'     => ($pipeline && $pipeline->pipeline_value) ? (float)$pipeline->pipeline_value : 0.00,
         ];
     }
 }
