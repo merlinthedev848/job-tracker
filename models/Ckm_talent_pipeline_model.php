@@ -53,11 +53,12 @@ class Ckm_talent_pipeline_model extends App_Model
     }
 
     /**
-     * Get Pending Inbound Potentials
+     * Get Pending Inbound Potentials (Latest First / Descending Order)
      */
     public function get_pending_potentials()
     {
         $this->db->where('status', 'pending');
+        $this->db->order_by('created_at', 'desc');
         $this->db->order_by('id', 'desc');
         $res = $this->db->get(db_prefix() . 'ckm_talent_potentials');
         return $res ? $res->result_array() : [];
@@ -66,7 +67,7 @@ class Ckm_talent_pipeline_model extends App_Model
     /**
      * Ingest Inbound Email / Webhook Message
      */
-    public function ingest_inbound_message($from_name, $from_email, $subject, $body, $email_uid = null)
+    public function ingest_inbound_message($from_name, $from_email, $subject, $body, $email_uid = null, $email_date = null)
     {
         // Prevent duplicate ingestion if email_uid provided
         if (!empty($email_uid)) {
@@ -79,6 +80,19 @@ class Ckm_talent_pipeline_model extends App_Model
         // Filter out spam, automated replies, out of office, and newsletter blasts
         if ($this->is_spam_or_autoreply($from_name, $from_email, $subject, $body)) {
             return false;
+        }
+
+        // Parse date
+        $created_at = date('Y-m-d H:i:s');
+        if (!empty($email_date)) {
+            if (is_numeric($email_date)) {
+                $created_at = date('Y-m-d H:i:s', (int)$email_date);
+            } else {
+                $t = strtotime($email_date);
+                if ($t) {
+                    $created_at = date('Y-m-d H:i:s', $t);
+                }
+            }
         }
 
         // Smart Extraction Logic (combining subject + body)
@@ -97,7 +111,7 @@ class Ckm_talent_pipeline_model extends App_Model
             'parsed_usage'    => $parsed['usage'] ?: 0.00,
             'parsed_deadline' => $parsed['deadline'] ?: null,
             'status'          => 'pending',
-            'created_at'      => date('Y-m-d H:i:s')
+            'created_at'      => $created_at
         ];
 
         $this->db->insert(db_prefix() . 'ckm_talent_potentials', $data);
@@ -417,7 +431,8 @@ class Ckm_talent_pipeline_model extends App_Model
                 }
 
                 if ($is_match && !empty($body)) {
-                    $potential_id = $this->ingest_inbound_message($from_name, $from_email, $subject, $body, (string)$uid);
+                    $email_date = !empty($header->udate) ? (int)$header->udate : (!empty($header->date) ? $header->date : null);
+                    $potential_id = $this->ingest_inbound_message($from_name, $from_email, $subject, $body, (string)$uid, $email_date);
                     if ($potential_id) {
                         $count++;
                         if ($auto_convert) {

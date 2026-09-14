@@ -66,7 +66,10 @@
                                         <td class="text-center">
                                             <input type="checkbox" name="potential_ids[]" value="<?php echo $pot['id']; ?>" class="pot-checkbox">
                                         </td>
-                                        <td class="font-xs"><?php echo date('j M, H:i', strtotime($pot['created_at'])); ?></td>
+                                        <td class="font-xs">
+                                            <strong><?php echo _dt($pot['created_at']); ?></strong>
+                                            <small class="text-muted block font-xs"><?php echo time_ago($pot['created_at']); ?></small>
+                                        </td>
                                         <td>
                                             <strong><?php echo htmlspecialchars($pot['from_name'] ?: 'Unknown Sender'); ?></strong>
                                             <small class="text-muted block font-xs"><?php echo htmlspecialchars($pot['from_email']); ?></small>
