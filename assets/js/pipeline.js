@@ -466,3 +466,187 @@ function test_imap_connection_ajax() {
         alert_float('danger', 'Failed to reach server to test IMAP connection.');
     });
 }
+
+/**
+ * Teleprompter & Live Take Timer Engine
+ */
+var prompterScrollInterval = null;
+var prompterTimerInterval = null;
+var prompterTimerStartTime = 0;
+var prompterTimerElapsed = 0;
+var prompterIsRunning = false;
+var prompterFontSize = 22;
+
+function toggle_teleprompter() {
+    var viewport = document.getElementById('teleprompter_viewport');
+    var $btn = $('#btn_teleprompter_play');
+
+    if (prompterScrollInterval) {
+        clearInterval(prompterScrollInterval);
+        prompterScrollInterval = null;
+        $btn.html('<i class="fa fa-play"></i> Auto-Scroll').removeClass('btn-warning').addClass('btn-success');
+    } else {
+        var speed = parseInt($('#prompter_speed').val()) || 3;
+        prompterScrollInterval = setInterval(function() {
+            viewport.scrollTop += speed;
+            if (viewport.scrollTop + viewport.clientHeight >= viewport.scrollHeight) {
+                toggle_teleprompter(); // Reached bottom
+            }
+        }, 50);
+        $btn.html('<i class="fa fa-pause"></i> Pause').removeClass('btn-success').addClass('btn-warning');
+    }
+}
+
+function reset_teleprompter() {
+    if (prompterScrollInterval) {
+        toggle_teleprompter();
+    }
+    var viewport = document.getElementById('teleprompter_viewport');
+    viewport.scrollTop = 0;
+}
+
+function adjust_prompter_font(delta) {
+    prompterFontSize = Math.max(14, Math.min(48, prompterFontSize + delta));
+    $('#teleprompter_viewport').css('font-size', prompterFontSize + 'px');
+}
+
+function toggle_take_timer() {
+    var $btn = $('#btn_timer_toggle');
+    if (prompterIsRunning) {
+        clearInterval(prompterTimerInterval);
+        prompterIsRunning = false;
+        $btn.html('<i class="fa fa-circle"></i> Record').removeClass('btn-warning').addClass('btn-danger');
+    } else {
+        prompterTimerStartTime = Date.now() - prompterTimerElapsed;
+        prompterTimerInterval = setInterval(function() {
+            prompterTimerElapsed = Date.now() - prompterTimerStartTime;
+            var totalSeconds = Math.floor(prompterTimerElapsed / 1000);
+            var minutes = Math.floor(totalSeconds / 60);
+            var seconds = totalSeconds % 60;
+            var millis = Math.floor((prompterTimerElapsed % 1000) / 100);
+
+            var timeStr = (minutes < 10 ? '0' : '') + minutes + ':' + 
+                          (seconds < 10 ? '0' : '') + seconds + '.' + millis;
+            $('#prompter_timer_display').text(timeStr);
+        }, 100);
+        prompterIsRunning = true;
+        $btn.html('<i class="fa fa-pause"></i> Stop').removeClass('btn-danger').addClass('btn-warning');
+    }
+}
+
+function reset_take_timer() {
+    clearInterval(prompterTimerInterval);
+    prompterIsRunning = false;
+    prompterTimerElapsed = 0;
+    $('#prompter_timer_display').text('00:00.0');
+    $('#btn_timer_toggle').html('<i class="fa fa-circle"></i> Record').removeClass('btn-warning').addClass('btn-danger');
+}
+
+// Live word count updater for teleprompter
+$(document).on('input', '#teleprompter_text', function() {
+    var text = $(this).text().trim();
+    var words = text ? text.split(/\s+/).length : 0;
+    var estSeconds = Math.round((words / 150) * 60);
+    var mins = Math.floor(estSeconds / 60);
+    var secs = estSeconds % 60;
+    var timeFormatted = (mins > 0 ? mins + 'm ' : '') + secs + 's';
+    $('#prompter_word_count').text('Words: ~' + words + ' | Est: ~' + timeFormatted + ' (at 150 WPM)');
+});
+
+/**
+ * IVR Prompt Batch Calculator
+ */
+function calculate_ivr_rate() {
+    var baseFee = parseFloat($('#ivr_base_fee').val()) || 150.00;
+    var totalPrompts = parseInt($('#ivr_total_prompts').val()) || 1;
+    var extraFee = parseFloat($('#ivr_extra_prompt_fee').val()) || 10.00;
+
+    var extraPrompts = Math.max(0, totalPrompts - 10);
+    var extraTotal = extraPrompts * extraFee;
+    var grandTotal = baseFee + extraTotal;
+
+    $('#ivr_extra_count').text(extraPrompts);
+    $('#ivr_extra_display').text('£' + extraTotal.toFixed(2));
+    $('#ivr_total_display').text('£' + grandTotal.toFixed(2));
+}
+
+function apply_ivr_to_calculator() {
+    var baseFee = parseFloat($('#ivr_base_fee').val()) || 150.00;
+    var totalPrompts = parseInt($('#ivr_total_prompts').val()) || 1;
+    var extraFee = parseFloat($('#ivr_extra_prompt_fee').val()) || 10.00;
+    var extraPrompts = Math.max(0, totalPrompts - 10);
+    var grandTotal = baseFee + (extraPrompts * extraFee);
+
+    $('#calc_genre').val('telephony').selectpicker('refresh');
+    $('#calc_bsf_display').text('£' + grandTotal.toFixed(2));
+    $('#calc_gross_display').text('£' + grandTotal.toFixed(2));
+    var comm = parseFloat($('#calc_commission').val()) || 0;
+    var net = grandTotal - ((grandTotal * comm) / 100);
+    $('#calc_net_display').text('£' + net.toFixed(2));
+
+    $('a[href="#calc_tab_custom"]').tab('show');
+    alert_float('success', 'IVR batch rate transferred to quote builder!');
+}
+
+/**
+ * Buyout Renewal Pitch Engine
+ */
+function open_buyout_pitch_modal(jobId) {
+    $('#pitch_job_id').val(jobId);
+    $('#pitch_send_feedback').addClass('hide').removeClass('alert-success alert-danger').text('');
+    $('#btn_send_pitch').prop('disabled', false).html('<i class="fa fa-paper-plane"></i> Send Renewal Pitch Email Now');
+
+    $.get(admin_url + 'ckm_talent_pipeline/get_buyout_pitch/' + jobId, function(res) {
+        if (res && res.pitch_text) {
+            $('#pitch_recipient').val(res.email || '');
+            $('#pitch_subject').val('Voice Over License Renewal: ' + (res.title || 'Project Campaign'));
+            $('#pitch_message_body').val(res.pitch_text);
+            $('#buyout_pitch_modal').modal('show');
+        }
+    }, 'json');
+}
+
+function send_pitch_email_ajax() {
+    var jobId     = $('#pitch_job_id').val();
+    var recipient = $('#pitch_recipient').val().trim();
+    var subject   = $('#pitch_subject').val().trim();
+    var message   = $('#pitch_message_body').val();
+
+    if (!recipient) {
+        alert('Please provide a recipient email address.');
+        return;
+    }
+
+    var $btn = $('#btn_send_pitch');
+    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Sending...');
+    $('#pitch_send_feedback').addClass('hide');
+
+    $.post(admin_url + 'ckm_talent_pipeline/send_buyout_pitch', {
+        job_id: jobId,
+        recipient: recipient,
+        subject: subject,
+        message: message
+    }, function(res) {
+        $btn.prop('disabled', false).html('<i class="fa fa-paper-plane"></i> Send Renewal Pitch Email Now');
+        if (res.success) {
+            $('#pitch_send_feedback').removeClass('hide alert-danger').addClass('alert-success').text(res.message);
+            setTimeout(function() {
+                $('#buyout_pitch_modal').modal('hide');
+            }, 1500);
+        } else {
+            $('#pitch_send_feedback').removeClass('hide alert-success').addClass('alert-danger').text(res.message);
+        }
+    }, 'json').fail(function() {
+        $btn.prop('disabled', false).html('<i class="fa fa-paper-plane"></i> Send Renewal Pitch Email Now');
+        $('#pitch_send_feedback').removeClass('hide alert-success').addClass('alert-danger').text('An error occurred while communicating with the mail server.');
+    });
+}
+
+function copy_pitch_to_clipboard() {
+    var copyText = document.getElementById("pitch_message_body");
+    copyText.select();
+    copyText.setSelectionRange(0, 99999);
+    document.execCommand("copy");
+    alert_float('success', "Renewal pitch copied to clipboard! You can paste it directly into your email reply.");
+    $('#buyout_pitch_modal').modal('hide');
+}

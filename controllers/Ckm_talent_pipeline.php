@@ -197,26 +197,40 @@ class Ckm_talent_pipeline extends AdminController
 
     /**
      * Fetch Auto-Generated Quote Draft via AJAX
+    /**
+     * Fetch Auto-Generated Buyout Extension Pitch Draft
      */
-    public function get_auto_quote($potential_id)
+    public function get_buyout_pitch($job_id)
     {
         if ($this->input->is_ajax_request()) {
-            $quote_text = $this->ckm_talent_pipeline_model->generate_auto_quote_text($potential_id);
-            echo json_encode(['quote_text' => $quote_text]);
+            $pitch_text = $this->ckm_talent_pipeline_model->generate_buyout_pitch_text($job_id);
+            $job = $this->ckm_talent_pipeline_model->get($job_id);
+            $email = '';
+            if ($job && !empty($job->client_id)) {
+                $client = $this->clients_model->get_contacts($job->client_id, ['is_primary' => 1]);
+                if (!empty($client) && !empty($client[0]['email'])) {
+                    $email = $client[0]['email'];
+                }
+            }
+            echo json_encode([
+                'pitch_text' => $pitch_text,
+                'email'      => $email,
+                'title'      => $job ? $job->job_title : ''
+            ]);
             die();
         }
     }
 
     /**
-     * Send Quotation Email directly via Perfex CRM mail system
+     * Send Buyout Renewal Pitch Email
      */
-    public function send_quote_email()
+    public function send_buyout_pitch()
     {
         if ($this->input->is_ajax_request()) {
-            $potential_id = $this->input->post('potential_id');
-            $recipient    = trim($this->input->post('recipient'));
-            $subject      = trim($this->input->post('subject'));
-            $message      = $this->input->post('message');
+            $job_id    = $this->input->post('job_id');
+            $recipient = trim($this->input->post('recipient'));
+            $subject   = trim($this->input->post('subject'));
+            $message   = $this->input->post('message');
 
             if (empty($recipient) || !filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
                 echo json_encode(['success' => false, 'message' => 'Please provide a valid recipient email address.']);
@@ -224,7 +238,7 @@ class Ckm_talent_pipeline extends AdminController
             }
 
             if (empty($message)) {
-                echo json_encode(['success' => false, 'message' => 'Email message body cannot be empty.']);
+                echo json_encode(['success' => false, 'message' => 'Pitch message body cannot be empty.']);
                 die();
             }
 
@@ -235,20 +249,79 @@ class Ckm_talent_pipeline extends AdminController
             
             $this->email->from($from_email, $from_name);
             $this->email->to($recipient);
-            $this->email->subject($subject ?: 'Quotation & Availability - Voice Over Services');
+            $this->email->subject($subject ?: 'Voice Over License Renewal & Extension Options');
             $this->email->message(nl2br(htmlspecialchars($message)));
 
             if ($this->email->send()) {
-                if ($potential_id) {
-                    $this->db->where('id', $potential_id);
-                    $this->db->update(db_prefix() . 'ckm_talent_potentials', ['status' => 'quoted']);
-                }
-                echo json_encode(['success' => true, 'message' => 'Quotation email dispatched successfully!']);
+                echo json_encode(['success' => true, 'message' => 'Buyout renewal pitch sent successfully!']);
             } else {
-                echo json_encode(['success' => false, 'message' => 'Failed to send email. Check your SMTP settings in Setup -> Settings -> Email.']);
+                echo json_encode(['success' => false, 'message' => 'Failed to send email. Check your SMTP settings.']);
             }
             die();
         }
+    }
+
+    /**
+     * Trigger a Test Inbound Webhook Ping
+     */
+    public function simulate_webhook()
+    {
+        if (!is_admin()) {
+            access_denied('ckm_talent_pipeline');
+        }
+
+        $id = $this->ckm_talent_pipeline_model->simulate_test_webhook();
+        if ($id) {
+            set_alert('success', 'Test casting webhook simulated successfully! New breakdown added to your queue.');
+        } else {
+            set_alert('warning', 'Simulation triggered but was filtered as duplicate or invalid.');
+        }
+        redirect(admin_url('ckm_talent_pipeline?tab=crm'));
+    }
+
+    /**
+     * Export Auditions and Bookings to CSV (Accounting & Tax Pack)
+     */
+    public function export_csv()
+    {
+        if (!has_permission('ckm_talent_pipeline', '', 'view') && !is_admin()) {
+            access_denied('ckm_talent_pipeline');
+        }
+
+        $jobs = $this->ckm_talent_pipeline_model->get();
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename=VO_Talent_Pipeline_Export_' . date('Y-m-d') . '.csv');
+
+        $output = fopen('php://output', 'w');
+        fputcsv($output, [
+            'Job ID', 'Project Title', 'Client / Agency', 'Status', 'Genre / Category', 
+            'Role Name', 'Word Count', 'BSF Amount', 'Usage Amount', 'Gross Fee', 
+            'Commission %', 'Net Earnings', 'Invoice ID', 'Booking Date', 'Usage Expiry'
+        ]);
+
+        foreach ($jobs as $j) {
+            fputcsv($output, [
+                $j['id'],
+                $j['job_title'],
+                $j['client_company'] ?: $j['agent_name'],
+                $j['status'],
+                $j['category_name'],
+                $j['role_name'],
+                $j['word_count'],
+                $j['bsf_amount'],
+                $j['usage_amount'],
+                $j['total_amount'],
+                $j['commission_percent'],
+                $j['net_amount'],
+                $j['perfex_invoice_id'] ?: 'Uninvoiced',
+                $j['date_created'],
+                $j['usage_expiry_date'] ?: 'N/A'
+            ]);
+        }
+
+        fclose($output);
+        exit();
     }
 
     /**

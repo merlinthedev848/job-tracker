@@ -1037,4 +1037,61 @@ class Ckm_talent_pipeline_model extends App_Model
             'pipeline_value'     => ($pipeline && $pipeline->pipeline_value) ? (float)$pipeline->pipeline_value : 0.00,
         ];
     }
+
+    /**
+     * Generate Automated Buyout License Renewal Pitch Draft
+     */
+    public function generate_buyout_pitch_text($job_id)
+    {
+        $job = $this->get($job_id);
+        if (!$job) return '';
+
+        $client_name = !empty($job->client_company) ? $job->client_company : ($job->agent_name ?: 'Production Team');
+        $project_title = $job->job_title;
+        $medium = $job->usage_medium ?: 'commercial / online media';
+        $territory = $job->usage_territory ?: 'National / Digital';
+        $expiry_date = !empty($job->usage_expiry_date) ? date('j F Y', strtotime($job->usage_expiry_date)) : 'the coming weeks';
+        $bsf = (float)$job->bsf_amount > 0 ? (float)$job->bsf_amount : 250.00;
+
+        $one_year_rate = ckm_format_money($bsf * 1.0);
+        $two_year_rate = ckm_format_money($bsf * 1.8);
+        $perpetuity_rate = ckm_format_money($bsf * 3.5);
+
+        $text = "Hi " . $client_name . ",\n\n"
+              . "I hope you're having a fantastic week!\n\n"
+              . "I am checking in regarding our voice over project for \"" . $project_title . "\". According to our booking agreement, the current voice over license for " . $medium . " (" . $territory . ") is set to conclude on " . $expiry_date . ".\n\n"
+              . "If you are planning to continue running or distributing the campaign, here are the renewal options to keep your licensing fully covered without interruption:\n\n"
+              . "1. 1-Year License Extension: " . $one_year_rate . "\n"
+              . "2. 2-Year License Extension (10% discount): " . $two_year_rate . "\n"
+              . "3. In-Perpetuity / Full Buyout Option: " . $perpetuity_rate . "\n\n"
+              . "Please let me know which option best aligns with your campaign timeline and I will generate the updated paperwork.\n\n"
+              . "Warm regards,\n"
+              . (get_option('companyname') ?: 'Voice Over Talent');
+
+        return $text;
+    }
+
+    /**
+     * Simulate a Live Inbound Casting Call Webhook for Testing
+     */
+    public function simulate_test_webhook()
+    {
+        $sample_castings = [
+            [
+                'subject'    => 'URGENT Casting: Lead Narrator for Luxury EV Commercial - £450 BSF + £900 Buyout',
+                'from_name'  => 'Horizon Creative Media',
+                'from_email' => 'casting@horizoncreative.agency',
+                'body'       => "Hi there,\n\nWe love your voice reel and would like to audition you for our upcoming Luxury EV Campaign.\n\nProject: Electric Horizon 2026 Commercial\nRole: Lead Narrator (Warm, Authoritative, Contemporary)\nWord count: 180 words\nDeadline: " . date('Y-m-d', strtotime('+2 days')) . "\nBSF: £450.00\nUsage: £900.00 (1 Year UK TV & Web)\n\nScript attached. Please let us know your availability!"
+            ],
+            [
+                'subject'    => 'New VO Project: Interactive Medical Explainer App - 450 words - £300 Fee',
+                'from_name'  => 'Apex Health Studios',
+                'from_email' => 'talent@apexhealth.co.uk',
+                'body'       => "Hello,\n\nWe have a new medical explainer series needing narration.\n\nProject: CardioCare Patient App\nRole: Medical Guide / Doctor\nWord Count: 450 words\nBSF: £300.00\nDeadline: " . date('Y-m-d', strtotime('+3 days')) . "\nUsage: Internal / Non-Broadcast\n\nLooking forward to working with you!"
+            ]
+        ];
+
+        $sample = $sample_castings[array_rand($sample_castings)];
+        return $this->ingest_inbound_message($sample['from_name'], $sample['from_email'], $sample['subject'], $sample['body'], 'test_sim_' . time());
+    }
 }

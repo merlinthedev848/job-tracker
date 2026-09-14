@@ -93,13 +93,18 @@
                                             </button>
                                             <ul class="dropdown-menu">
                                                 <li>
+                                                    <a href="#" onclick="$('#script_teleprompter_modal').modal('show'); return false;">
+                                                        <i class="fa fa-microphone text-primary"></i> Script Teleprompter & Live Take Timer
+                                                    </a>
+                                                </li>
+                                                <li>
                                                     <a href="#" onclick="$('#smart_parser_modal').modal('show'); return false;">
                                                         <i class="fa fa-bolt text-info"></i> Paste Casting Call (Smart Parser)
                                                     </a>
                                                 </li>
                                                 <li>
                                                     <a href="#" onclick="$('#rate_calculator_modal').modal('show'); return false;">
-                                                        <i class="fa fa-calculator text-success"></i> VO Rate & Buyout Calculator
+                                                        <i class="fa fa-calculator text-success"></i> VO Rate Engine & GVAA Guide
                                                     </a>
                                                 </li>
                                             </ul>
@@ -145,6 +150,13 @@
 
                             <!-- TAB 2: GOALS & ANALYTICS -->
                             <div role="tabpanel" class="tab-pane" id="tab_analytics">
+                                <div class="display-flex justify-between align-center mbot15">
+                                    <h4 class="bold mtop0 mbot0 text-dark"><i class="fa fa-line-chart text-success"></i> Performance, Goals & Financials</h4>
+                                    <a href="<?php echo admin_url('ckm_talent_pipeline/export_csv'); ?>" class="btn btn-default btn-sm" title="Export all projects for tax and financial tracking">
+                                        <i class="fa fa-file-excel-o text-success"></i> Export Accounting & Tax CSV
+                                    </a>
+                                </div>
+
                                 <!-- Monthly Revenue Goal Pace Banner -->
                                 <div class="panel_s mbot20 ckm-goal-tracker-card">
                                     <div class="panel-body p15">
@@ -346,9 +358,14 @@
                                                             </span>
                                                         </td>
                                                         <td>
-                                                            <a href="<?php echo admin_url('ckm_talent_pipeline/duplicate/' . $lic['id']); ?>" class="btn btn-success btn-xs">
-                                                                <i class="fa fa-refresh"></i> Pitch Buyout Extension
-                                                            </a>
+                                                            <div class="btn-group">
+                                                                <button type="button" class="btn btn-warning btn-xs" onclick="open_buyout_pitch_modal(<?php echo $lic['id']; ?>);" title="Draft & Send Renewal Pitch">
+                                                                    <i class="fa fa-envelope-o"></i> Pitch Renewal
+                                                                </button>
+                                                                <a href="<?php echo admin_url('ckm_talent_pipeline/duplicate/' . $lic['id']); ?>" class="btn btn-default btn-xs" title="Duplicate into New Quote">
+                                                                    <i class="fa fa-clone"></i>
+                                                                </a>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 <?php } ?>
@@ -459,6 +476,9 @@
                                                                  <button type="button" class="btn btn-default" onclick="var c=document.getElementById('ckm_webhook_url');c.select();document.execCommand('copy');alert_float('success','Webhook URL copied to clipboard!');">
                                                                      <i class="fa fa-copy"></i> Copy Webhook URL
                                                                  </button>
+                                                                 <a href="<?php echo admin_url('ckm_talent_pipeline/simulate_webhook'); ?>" class="btn btn-info">
+                                                                     <i class="fa fa-paper-plane"></i> Send Test Inbound Ping
+                                                                 </a>
                                                              </span>
                                                          </div>
                                                      </div>
@@ -596,5 +616,7 @@
 <?php include(__DIR__ . '/modals/smart_parser_modal.php'); ?>
 <?php include(__DIR__ . '/modals/rate_calculator_modal.php'); ?>
 <?php include(__DIR__ . '/modals/potentials_tray_modal.php'); ?>
+<?php include(__DIR__ . '/modals/script_teleprompter_modal.php'); ?>
+<?php include(__DIR__ . '/modals/buyout_pitch_modal.php'); ?>
 
 <?php init_tail(); ?>
