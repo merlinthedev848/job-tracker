@@ -42,17 +42,17 @@
                             </div>
 
                             <ul class="nav nav-pills" role="tablist">
-                                <li role="presentation" class="active">
+                                <li role="presentation" class="<?php echo ($active_tab == 'pipeline') ? 'active' : ''; ?>">
                                     <a href="#tab_pipeline" aria-controls="tab_pipeline" role="tab" data-toggle="tab">
                                         <i class="fa fa-th-large"></i> <strong>Pipeline</strong>
                                     </a>
                                 </li>
-                                <li role="presentation">
+                                <li role="presentation" class="<?php echo ($active_tab == 'analytics') ? 'active' : ''; ?>">
                                     <a href="#tab_analytics" aria-controls="tab_analytics" role="tab" data-toggle="tab">
                                         <i class="fa fa-bar-chart"></i> <strong>Analytics & Goals</strong>
                                     </a>
                                 </li>
-                                <li role="presentation">
+                                <li role="presentation" class="<?php echo ($active_tab == 'buyouts') ? 'active' : ''; ?>">
                                     <a href="#tab_buyouts" aria-controls="tab_buyouts" role="tab" data-toggle="tab">
                                         <i class="fa fa-copyright"></i> <strong>Buyouts Radar</strong>
                                         <?php if (!empty($expiring_licenses)) { ?>
@@ -60,7 +60,7 @@
                                         <?php } ?>
                                     </a>
                                 </li>
-                                <li role="presentation">
+                                <li role="presentation" class="<?php echo ($active_tab == 'crm') ? 'active' : ''; ?>">
                                     <a href="#tab_crm" aria-controls="tab_crm" role="tab" data-toggle="tab">
                                         <i class="fa fa-cog"></i> <strong>Settings</strong>
                                     </a>
@@ -70,7 +70,7 @@
 
                         <div class="tab-content">
                             <!-- TAB 1: PIPELINE BOARD -->
-                            <div role="tabpanel" class="tab-pane active" id="tab_pipeline">
+                            <div role="tabpanel" class="tab-pane <?php echo ($active_tab == 'pipeline') ? 'active' : ''; ?>" id="tab_pipeline">
                                 <!-- Unified Action & Filter Toolbar -->
                                 <div class="ckm-command-bar mbot20">
                                     <div class="ckm-toolbar-left">
@@ -165,7 +165,7 @@
                             </div>
 
                             <!-- TAB 2: GOALS & ANALYTICS -->
-                            <div role="tabpanel" class="tab-pane" id="tab_analytics">
+                            <div role="tabpanel" class="tab-pane <?php echo ($active_tab == 'analytics') ? 'active' : ''; ?>" id="tab_analytics">
                                 <div class="display-flex justify-between align-center mbot15">
                                     <h4 class="bold mtop0 mbot0 text-dark"><i class="fa fa-line-chart text-success"></i> Performance, Goals & Financials</h4>
                                     <a href="<?php echo admin_url('ckm_talent_pipeline/export_csv'); ?>" class="btn btn-default btn-sm" title="Export all projects for tax and financial tracking">
@@ -389,7 +389,7 @@
                             </div>
 
                             <!-- TAB 3: EXPIRING BUYOUTS & RENEWALS RADAR -->
-                            <div role="tabpanel" class="tab-pane" id="tab_buyouts">
+                            <div role="tabpanel" class="tab-pane <?php echo ($active_tab == 'buyouts') ? 'active' : ''; ?>" id="tab_buyouts">
                                 <div class="alert alert-warning">
                                     <i class="fa fa-clock-o"></i> <strong>Passive Renewal Engine:</strong> These commercial and corporate buyout licenses are expiring within the next 90 days. Click <strong>"Pitch Buyout Extension"</strong> to draft a personalized renewal email.
                                 </div>
@@ -442,7 +442,7 @@
                             </div>
 
                             <!-- TAB 4: SETTINGS, STUDIO PROFILE & MAILBOX MONITOR -->
-                            <div role="tabpanel" class="tab-pane" id="tab_crm">
+                            <div role="tabpanel" class="tab-pane <?php echo ($active_tab == 'crm') ? 'active' : ''; ?>" id="tab_crm">
                                 <!-- Voice Actor Home Studio Profile & Tech Specs -->
                                 <div class="row mbot20">
                                     <div class="col-md-12">
@@ -785,5 +785,7 @@
 <?php include(__DIR__ . '/modals/file_namer_modal.php'); ?>
 <?php include(__DIR__ . '/modals/revisions_modal.php'); ?>
 <?php include(__DIR__ . '/modals/audition_nudge_modal.php'); ?>
+<?php include(__DIR__ . '/modals/agent_modal.php'); ?>
+<?php include(__DIR__ . '/modals/expense_modal.php'); ?>
 
 <?php init_tail(); ?>
