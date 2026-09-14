@@ -1,10 +1,12 @@
-/* CKM Talent Pipeline JavaScript */
+/* CKM Talent Pipeline JavaScript Engine */
 
 $(function() {
     init_kanban_drag_drop();
     init_rate_calculator();
+    init_live_search_and_filters();
+    init_vo_rate_widget();
 
-    // Auto-update commission when source changes
+    // Auto-update commission when source changes in modal
     $('#source_id').on('change', function() {
         var selected = $(this).find(':selected');
         var comm = selected.data('commission');
@@ -53,10 +55,8 @@ function init_kanban_drag_drop() {
             var card = document.querySelector('.ckm-card[data-job-id="' + jobId + '"]');
 
             if (card && targetStatus) {
-                // If moving to Lost, prompt for reason modal
                 if (targetStatus === 'lost') {
-                    $('#loss_job_id').val(jobId);
-                    $('#talent_loss_reason_modal').modal('show');
+                    trigger_loss_modal(jobId);
                 } else {
                     update_job_status_ajax(jobId, targetStatus);
                     col.appendChild(card);
@@ -64,6 +64,47 @@ function init_kanban_drag_drop() {
             }
         });
     });
+}
+
+/**
+ * Quick 1-Click Status Change from Card Hover
+ */
+function quick_change_card_status(jobId, targetStatus) {
+    update_job_status_ajax(jobId, targetStatus);
+    var card = document.querySelector('.ckm-card[data-job-id="' + jobId + '"]');
+    var targetCol = document.getElementById('kanban-col-' + targetStatus);
+    if (card && targetCol) {
+        targetCol.appendChild(card);
+    }
+}
+
+/**
+ * Trigger Loss Modal
+ */
+function trigger_loss_modal(jobId) {
+    $('#loss_job_id').val(jobId);
+    $('#talent_loss_reason_modal').modal('show');
+}
+
+/**
+ * Confirm Loss Reason
+ */
+function confirm_loss_status() {
+    var jobId = $('#loss_job_id').val();
+    var reasonId = $('#loss_reason_id').val();
+    var notes = $('#loss_notes').val();
+
+    update_job_status_ajax(jobId, 'lost', reasonId, notes);
+
+    var card = document.querySelector('.ckm-card[data-job-id="' + jobId + '"]');
+    var lostCol = document.getElementById('kanban-col-lost');
+    if (card && lostCol) {
+        lostCol.appendChild(card);
+    }
+
+    $('#talent_loss_reason_modal').modal('hide');
+    $('#loss_reason_id').val('').selectpicker('refresh');
+    $('#loss_notes').val('');
 }
 
 /**
@@ -76,31 +117,16 @@ function update_job_status_ajax(jobId, status, lossReasonId, lossNotes) {
         loss_reason_id: lossReasonId || '',
         loss_notes: lossNotes || ''
     }, function(response) {
-        // Success
+        // Updated
     }, 'json');
 }
 
 /**
- * Confirm loss reason from modal
+ * Column-Level Quick Add
  */
-function confirm_loss_status() {
-    var jobId = $('#loss_job_id').val();
-    var reasonId = $('#loss_reason_id').val();
-    var notes = $('#loss_notes').val();
-
-    update_job_status_ajax(jobId, 'lost', reasonId, notes);
-
-    // Move card in DOM to lost column
-    var card = document.querySelector('.ckm-card[data-job-id="' + jobId + '"]');
-    var lostCol = document.getElementById('kanban-col-lost');
-    if (card && lostCol) {
-        lostCol.appendChild(card);
-    }
-
-    $('#talent_loss_reason_modal').modal('hide');
-    // Reset modal
-    $('#loss_reason_id').val('').selectpicker('refresh');
-    $('#loss_notes').val('');
+function quick_add_in_column(status) {
+    new_talent_job();
+    $('#status').val(status).selectpicker('refresh');
 }
 
 /**
@@ -115,6 +141,8 @@ function new_talent_job() {
     $('#category_id').val('').selectpicker('refresh');
     $('#source_id').val('').selectpicker('refresh');
     $('#direction_type').val('Self-Record').selectpicker('refresh');
+    $('input[name="audio_specs"]').val('48kHz / 24-bit Mono WAV');
+    $('input[name="audio_link"]').val('');
     
     calculate_modal_rates();
     $('#talent_job_modal').modal('show');
@@ -154,7 +182,8 @@ function edit_talent_job(id) {
         $('input[name="direction_link"]').val(data.direction_link);
         $('input[name="session_datetime"]').val(data.session_datetime);
         $('input[name="delivery_deadline"]').val(data.delivery_deadline);
-        $('input[name="audio_specs"]').val(data.audio_specs);
+        $('input[name="audio_specs"]').val(data.audio_specs || '48kHz / 24-bit Mono WAV');
+        $('input[name="audio_link"]').val(data.audio_link || '');
 
         calculate_modal_rates();
         $('#talent_job_modal').modal('show');
@@ -162,7 +191,7 @@ function edit_talent_job(id) {
 }
 
 /**
- * Rate Calculator
+ * Modal Rate Calculations
  */
 function init_rate_calculator() {
     $('#modal_bsf, #modal_usage, #modal_commission').on('input keyup change', function() {
@@ -180,4 +209,179 @@ function calculate_modal_rates() {
 
     $('#modal_gross_preview').text(gross.toFixed(2));
     $('#modal_net_preview').text(net.toFixed(2));
+}
+
+/**
+ * Live Search and Genre Filter Pills
+ */
+function init_live_search_and_filters() {
+    var activeCategory = 'all';
+    var searchQuery = '';
+
+    function filterCards() {
+        var cards = $('.ckm-card');
+        cards.each(function() {
+            var card = $(this);
+            var cardCat = card.data('category-id');
+            var cardSearch = (card.data('search') || '').toString();
+
+            var matchesCat = (activeCategory === 'all' || cardCat == activeCategory);
+            var matchesSearch = (searchQuery === '' || cardSearch.indexOf(searchQuery) !== -1);
+
+            if (matchesCat && matchesSearch) {
+                card.show();
+            } else {
+                card.hide();
+            }
+        });
+    }
+
+    // Search input
+    $('#ckm_search_input').on('keyup input', function() {
+        searchQuery = $(this).val().toLowerCase().trim();
+        filterCards();
+    });
+
+    // Genre Filter Pills
+    $('.ckm-genre-filter-btn').on('click', function() {
+        $('.ckm-genre-filter-btn').removeClass('active');
+        $(this).addClass('active');
+        activeCategory = $(this).data('cat-id');
+        filterCards();
+    });
+}
+
+/**
+ * Smart Casting Call & Email Parser Engine
+ */
+function execute_smart_parser() {
+    var text = $('#raw_casting_text').val().trim();
+    if (!text) {
+        alert('Please paste some email or breakdown text first.');
+        return;
+    }
+
+    var lines = text.split('\n');
+    var parsed = {
+        title: '',
+        role: '',
+        words: 0,
+        bsf: 0,
+        usage: 0,
+        deadline: '',
+        notes: text
+    };
+
+    // 1. Extract Project Title
+    var titleMatch = text.match(/(?:Subject|Project|Campaign|Title|Job):\s*([^\n\r]+)/i);
+    if (titleMatch) {
+        parsed.title = titleMatch[1].replace(/^(Re:\s*|Fwd:\s*|Audition:\s*|Casting:\s*)/i, '').trim();
+    } else if (lines.length > 0) {
+        parsed.title = lines[0].replace(/^(Re:\s*|Fwd:\s*|Subject:\s*)/i, '').trim();
+    }
+
+    // 2. Extract Role / Character
+    var roleMatch = text.match(/(?:Role|Character|Voice|Persona):\s*([^\n\r]+)/i);
+    if (roleMatch) {
+        parsed.role = roleMatch[1].trim();
+    }
+
+    // 3. Extract Word Count
+    var wordMatch = text.match(/(\d+)\s*(?:words|word|w)\b/i);
+    if (wordMatch) {
+        parsed.words = parseInt(wordMatch[1]);
+    }
+
+    // 4. Extract BSF and Usage Rates
+    var bsfMatch = text.match(/(?:BSF|Session Fee|Base Fee|Fee):\s*[£$€]?\s*(\d+(?:\.\d{2})?)/i);
+    if (bsfMatch) {
+        parsed.bsf = parseFloat(bsfMatch[1]);
+    }
+
+    var usageMatch = text.match(/(?:Usage|Buyout|Licensing):\s*[£$€]?\s*(\d+(?:\.\d{2})?)/i);
+    if (usageMatch) {
+        parsed.usage = parseFloat(usageMatch[1]);
+    }
+
+    // If generic budget was mentioned instead
+    if (!parsed.bsf && !parsed.usage) {
+        var budgetMatch = text.match(/(?:Budget|Rate|Total Fee):\s*[£$€]?\s*(\d+(?:\.\d{2})?)/i);
+        if (budgetMatch) {
+            parsed.bsf = parseFloat(budgetMatch[1]);
+        }
+    }
+
+    // Close parser modal and open prefilled job modal
+    $('#smart_parser_modal').modal('hide');
+    new_talent_job();
+
+    if (parsed.title) $('input[name="job_title"]').val(parsed.title);
+    if (parsed.role) $('input[name="role_name"]').val(parsed.role);
+    if (parsed.words) $('input[name="word_count"]').val(parsed.words);
+    if (parsed.bsf) $('#modal_bsf').val(parsed.bsf);
+    if (parsed.usage) $('#modal_usage').val(parsed.usage);
+    $('textarea[name="notes"]').val(text);
+
+    calculate_modal_rates();
+}
+
+/**
+ * Built-In VO Rate & Buyout Calculator Widget
+ */
+function init_vo_rate_widget() {
+    $('#calc_words, #calc_genre, #calc_medium, #calc_commission').on('input change keyup', function() {
+        calculate_vo_rate_widget();
+    });
+    calculate_vo_rate_widget();
+}
+
+function calculate_vo_rate_widget() {
+    var words = parseInt($('#calc_words').val()) || 0;
+    var baseBsf = parseFloat($('#calc_genre').find(':selected').data('bsf')) || 250;
+    var usageMultiplier = parseFloat($('#calc_medium').val()) || 0;
+    var commPercent = parseFloat($('#calc_commission').val()) || 0;
+
+    // Time estimate (150 wpm)
+    var totalSeconds = Math.round((words / 150) * 60);
+    var mins = Math.floor(totalSeconds / 60);
+    var secs = totalSeconds % 60;
+    var timeStr = (mins > 0 ? mins + ' min ' : '') + secs + ' sec';
+    $('#calc_est_time').text('~' + timeStr);
+
+    // Word count scaling for long form (if > 500 words, add incremental fee)
+    var calculatedBsf = baseBsf;
+    if (words > 500) {
+        var extraWords = words - 500;
+        calculatedBsf += Math.ceil(extraWords / 100) * 25;
+    }
+
+    var calculatedUsage = calculatedBsf * usageMultiplier;
+    var gross = calculatedBsf + calculatedUsage;
+    var net = gross - ((gross * commPercent) / 100);
+
+    $('#calc_bsf_display').text('£' + calculatedBsf.toFixed(2));
+    $('#calc_usage_display').text('£' + calculatedUsage.toFixed(2));
+    $('#calc_gross_display').text('£' + gross.toFixed(2));
+    $('#calc_net_display').text('£' + net.toFixed(2));
+}
+
+function apply_calculator_rates_to_job() {
+    var bsf = parseFloat($('#calc_bsf_display').text().replace(/[£$€]/g, '')) || 0;
+    var usage = parseFloat($('#calc_usage_display').text().replace(/[£$€]/g, '')) || 0;
+    var comm = parseFloat($('#calc_commission').val()) || 0;
+    var words = parseInt($('#calc_words').val()) || 0;
+
+    $('#rate_calculator_modal').modal('hide');
+
+    // If job modal isn't already open, open it
+    if (!$('#talent_job_modal').hasClass('in')) {
+        new_talent_job();
+    }
+
+    $('#modal_bsf').val(bsf);
+    $('#modal_usage').val(usage);
+    $('#modal_commission').val(comm);
+    if (words > 0) $('input[name="word_count"]').val(words);
+
+    calculate_modal_rates();
 }

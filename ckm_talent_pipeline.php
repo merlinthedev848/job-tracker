@@ -5,7 +5,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
 /*
 Module Name: CKM Talent Pipeline & Jobs Tracker
 Description: Specialized Voice Over, Actor & Creative Performer Job, Quote & Audition Pipeline with BSF/Usage tracking and 1-click Perfex Invoicing.
-Version: 1.0.1
+Version: 1.0.2
 Requires at least: 2.3.0
 Author: CKM Solutions
 */

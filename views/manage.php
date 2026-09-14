@@ -1,23 +1,6 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 <?php init_head(); ?>
 
-<?php
-if (!function_exists('ckm_format_money')) {
-    function ckm_format_money($amount) {
-        $amount = (float)$amount;
-        if (function_exists('get_base_currency') && function_exists('app_format_money')) {
-            try {
-                $currency = get_base_currency();
-                if ($currency) {
-                    return app_format_money($amount, $currency);
-                }
-            } catch (Exception $e) {} catch (Throwable $t) {}
-        }
-        return '$' . number_format($amount, 2);
-    }
-}
-?>
-
 <div id="wrapper">
     <div class="content">
         <!-- Top Metrics Row -->
@@ -75,21 +58,54 @@ if (!function_exists('ckm_format_money')) {
                         <div class="tab-content">
                             <!-- TAB 1: PIPELINE BOARD -->
                             <div role="tabpanel" class="tab-pane active" id="tab_pipeline">
-                                <div class="_buttons mbot20 display-flex justify-between align-center">
-                                    <div>
+                                <!-- Command Toolbar -->
+                                <div class="ckm-command-bar mbot20">
+                                    <div class="display-flex align-center flex-wrap gap-10">
+                                        <!-- Primary Actions -->
                                         <button type="button" class="btn btn-primary" onclick="new_talent_job();">
                                             <i class="fa fa-plus"></i> <?php echo _l('ckm_tp_new_job'); ?>
                                         </button>
+                                        
+                                        <!-- Smart Casting Email Ingestion Button -->
+                                        <button type="button" class="btn btn-info" onclick="$('#smart_parser_modal').modal('show');">
+                                            <i class="fa fa-bolt"></i> <strong>Paste Casting Call</strong>
+                                        </button>
+
+                                        <!-- VO Rate Calculator Button -->
+                                        <button type="button" class="btn btn-success" onclick="$('#rate_calculator_modal').modal('show');">
+                                            <i class="fa fa-calculator"></i> <strong>Rate Calculator</strong>
+                                        </button>
                                     </div>
 
-                                    <div class="btn-group">
-                                        <a href="<?php echo admin_url('ckm_talent_pipeline?view=kanban'); ?>" class="btn btn-default <?php echo ($view_mode == 'kanban') ? 'active' : ''; ?>">
-                                            <i class="fa fa-th-large"></i> <?php echo _l('ckm_tp_kanban_view'); ?>
-                                        </a>
-                                        <a href="<?php echo admin_url('ckm_talent_pipeline?view=list'); ?>" class="btn btn-default <?php echo ($view_mode == 'list') ? 'active' : ''; ?>">
-                                            <i class="fa fa-list"></i> <?php echo _l('ckm_tp_list_view'); ?>
-                                        </a>
+                                    <!-- Live Search & View Mode -->
+                                    <div class="display-flex align-center gap-10">
+                                        <div class="ckm-live-search-box">
+                                            <i class="fa fa-search ckm-search-icon"></i>
+                                            <input type="text" id="ckm_search_input" class="form-control" placeholder="Quick search project, client, agent...">
+                                        </div>
+
+                                        <div class="btn-group">
+                                            <a href="<?php echo admin_url('ckm_talent_pipeline?view=kanban'); ?>" class="btn btn-default <?php echo ($view_mode == 'kanban') ? 'active' : ''; ?>">
+                                                <i class="fa fa-th-large"></i> <?php echo _l('ckm_tp_kanban_view'); ?>
+                                            </a>
+                                            <a href="<?php echo admin_url('ckm_talent_pipeline?view=list'); ?>" class="btn btn-default <?php echo ($view_mode == 'list') ? 'active' : ''; ?>">
+                                                <i class="fa fa-list"></i> <?php echo _l('ckm_tp_list_view'); ?>
+                                            </a>
+                                        </div>
                                     </div>
+                                </div>
+
+                                <!-- Live Filter Genre Pills -->
+                                <div class="ckm-filter-pills-bar mbot15 display-flex align-center flex-wrap gap-5">
+                                    <span class="font-xs bold text-muted mright5"><i class="fa fa-filter"></i> Filter Genre:</span>
+                                    <button type="button" class="btn btn-default btn-xs ckm-genre-filter-btn active" data-cat-id="all">All Genres</button>
+                                    <?php if (!empty($categories)) { ?>
+                                        <?php foreach ($categories as $cat) { ?>
+                                            <button type="button" class="btn btn-default btn-xs ckm-genre-filter-btn" data-cat-id="<?php echo $cat['id']; ?>">
+                                                <span class="badge" style="background-color: <?php echo $cat['color']; ?>;">&nbsp;</span> <?php echo htmlspecialchars($cat['name']); ?>
+                                            </button>
+                                        <?php } ?>
+                                    <?php } ?>
                                 </div>
 
                                 <?php if ($view_mode == 'kanban') { ?>
@@ -272,5 +288,7 @@ if (!function_exists('ckm_format_money')) {
 <!-- Load Modals via direct include -->
 <?php include(__DIR__ . '/modals/job_modal.php'); ?>
 <?php include(__DIR__ . '/modals/loss_reason_modal.php'); ?>
+<?php include(__DIR__ . '/modals/smart_parser_modal.php'); ?>
+<?php include(__DIR__ . '/modals/rate_calculator_modal.php'); ?>
 
 <?php init_tail(); ?>

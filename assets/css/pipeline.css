@@ -1,73 +1,163 @@
-/* CKM Talent Pipeline Styles */
+/* CKM Talent Pipeline Modern Styles */
+
+.ckm-command-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.ckm-live-search-box {
+    position: relative;
+    width: 260px;
+}
+
+.ckm-live-search-box .form-control {
+    padding-left: 30px;
+    border-radius: 20px;
+}
+
+.ckm-search-icon {
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    color: #94a3b8;
+}
+
+.ckm-filter-pills-bar {
+    padding: 8px 12px;
+    background: #f8fafc;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+}
+
+.ckm-genre-filter-btn {
+    border-radius: 15px;
+    padding: 3px 10px;
+    font-size: 11px;
+    transition: all 0.2s ease;
+}
+
+.ckm-genre-filter-btn.active {
+    background-color: #2563eb !important;
+    color: #fff !important;
+    border-color: #2563eb !important;
+}
+
+/* Kanban Board */
 .ckm-kanban-board {
     overflow-x: auto;
-    padding-bottom: 15px;
+    padding-bottom: 20px;
 }
 
 .ckm-kanban-row {
     display: flex;
-    gap: 15px;
+    gap: 16px;
     min-width: 1400px;
 }
 
 .ckm-kanban-col {
     flex: 1;
-    min-width: 210px;
-    background: #f4f6f9;
-    border-radius: 6px;
+    min-width: 220px;
+    background: #f1f5f9;
+    border-radius: 8px;
     border: 1px solid #e2e8f0;
     display: flex;
     flex-direction: column;
-    max-height: 80vh;
+    max-height: 82vh;
 }
 
 .ckm-kanban-col-header {
     padding: 10px 14px;
     background: #fff;
     border-bottom: 1px solid #e2e8f0;
-    border-radius: 5px 5px 0 0;
+    border-radius: 7px 7px 0 0;
+}
+
+.ckm-col-add-btn {
+    padding: 1px 6px;
+    border-radius: 50%;
+    line-height: 1;
 }
 
 .ckm-kanban-cards-container {
     padding: 10px;
     overflow-y: auto;
     flex-grow: 1;
-    min-height: 250px;
+    min-height: 300px;
 }
 
 .ckm-kanban-cards-container.drag-over {
-    background: #e3f2fd;
+    background: #e0f2fe;
     border: 2px dashed #0288d1;
+    border-radius: 6px;
 }
 
+/* Modern Card */
 .ckm-card {
     background: #fff;
-    border-radius: 6px;
-    padding: 12px;
-    margin-bottom: 10px;
-    border: 1px solid #e0e0e0;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     cursor: grab;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
 }
 
 .ckm-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.08);
+    border-color: #cbd5e1;
 }
 
 .ckm-card.dragging {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: grabbing;
 }
 
+/* Urgency Card Borders */
+.ckm-card.ckm-urgency-overdue {
+    border-left: 4px solid #ef4444;
+}
+
+.ckm-card.ckm-urgency-today {
+    border-left: 4px solid #f97316;
+}
+
+.ckm-card.ckm-urgency-soon {
+    border-left: 4px solid #eab308;
+}
+
 .ckm-card-title a {
-    color: #2c3e50;
+    color: #1e293b;
     text-decoration: none;
 }
 
 .ckm-card-title a:hover {
     color: #0288d1;
+}
+
+.ckm-cat-pill {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 12px;
+}
+
+/* Quick Action Hover Bar */
+.ckm-card-quick-actions {
+    display: none;
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px dashed #e2e8f0;
+    gap: 4px;
+}
+
+.ckm-card:hover .ckm-card-quick-actions {
+    display: flex;
+    flex-wrap: wrap;
 }
 
 .ckm-audio-badge {
@@ -80,14 +170,8 @@
 }
 
 .ckm-card-footer {
-    border-top: 1px solid #f1f5f9;
+    border-top: 1px solid #f8fafc;
 }
 
-/* Status Labels */
-.ckm-status-quote_sent { background-color: #0288d1; color: #fff; }
-.ckm-status-shortlisted { background-color: #fbc02d; color: #000; }
-.ckm-status-won { background-color: #43a047; color: #fff; }
-.ckm-status-in_progress { background-color: #8e24aa; color: #fff; }
-.ckm-status-delivered { background-color: #fb8c00; color: #fff; }
-.ckm-status-completed { background-color: #00897b; color: #fff; }
-.ckm-status-lost { background-color: #757575; color: #fff; }
+.gap-5 { gap: 5px; }
+.gap-10 { gap: 10px; }

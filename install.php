@@ -33,6 +33,7 @@ if (!$CI->db->table_exists(db_prefix() . 'ckm_talent_jobs')) {
         `direction_type` VARCHAR(100) DEFAULT 'Self-Record',
         `direction_link` VARCHAR(255) DEFAULT NULL,
         `audio_specs` VARCHAR(100) DEFAULT '48kHz / 24-bit WAV',
+        `audio_link` VARCHAR(255) DEFAULT NULL,
         `delivery_deadline` DATE DEFAULT NULL,
         `perfex_invoice_id` INT(11) DEFAULT NULL,
         `notes` TEXT DEFAULT NULL,
@@ -44,6 +45,10 @@ if (!$CI->db->table_exists(db_prefix() . 'ckm_talent_jobs')) {
         KEY `source_id` (`source_id`),
         KEY `category_id` (`category_id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
+} else {
+    if (!$CI->db->field_exists('audio_link', db_prefix() . 'ckm_talent_jobs')) {
+        $CI->db->query('ALTER TABLE `' . db_prefix() . 'ckm_talent_jobs` ADD `audio_link` VARCHAR(255) DEFAULT NULL AFTER `audio_specs`;');
+    }
 }
 
 // 2. Lookup Categories (Commercial, E-Learning, Animation, etc.)
@@ -56,7 +61,6 @@ if (!$CI->db->table_exists(db_prefix() . 'ckm_talent_categories')) {
         PRIMARY KEY (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
 
-    // Seed default VO / Acting categories
     $default_categories = [
         ['name' => 'Commercial (TV / Radio / Web)', 'color' => '#e91e63'],
         ['name' => 'Corporate / E-Learning / Explainer', 'color' => '#009688'],
@@ -81,7 +85,6 @@ if (!$CI->db->table_exists(db_prefix() . 'ckm_talent_sources')) {
         PRIMARY KEY (`id`)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
 
-    // Seed default Sources
     $default_sources = [
         ['name' => 'Direct Client', 'default_commission' => 0.00],
         ['name' => 'Voice / Talent Agent (Commercial)', 'default_commission' => 20.00],
@@ -95,7 +98,7 @@ if (!$CI->db->table_exists(db_prefix() . 'ckm_talent_sources')) {
     $CI->db->insert_batch(db_prefix() . 'ckm_talent_sources', $default_sources);
 }
 
-// 4. Loss Reasons (Price, Selected Other Voice, Role Cancelled, Ghosted)
+// 4. Loss Reasons
 if (!$CI->db->table_exists(db_prefix() . 'ckm_talent_loss_reasons')) {
     $CI->db->query("CREATE TABLE `" . db_prefix() . "ckm_talent_loss_reasons` (
         `id` INT(11) NOT NULL AUTO_INCREMENT,

@@ -8,16 +8,21 @@
         <div class="modal-content">
             <div class="modal-header">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                <h4 class="modal-title" id="talent_job_modal_title"><?php echo _l('ckm_tp_new_job'); ?></h4>
+                <div class="display-flex justify-between align-center mright25">
+                    <h4 class="modal-title" id="talent_job_modal_title"><?php echo _l('ckm_tp_new_job'); ?></h4>
+                    <button type="button" class="btn btn-xs btn-info" onclick="$('#rate_calculator_modal').modal('show');">
+                        <i class="fa fa-calculator"></i> Rate Calculator
+                    </button>
+                </div>
             </div>
             
             <div class="modal-body">
                 <!-- Nav Tabs -->
                 <ul class="nav nav-tabs mbot15" role="tablist">
-                    <li role="presentation" class="active"><a href="#tab_general" aria-controls="tab_general" role="tab" data-toggle="tab"><i class="fa-solid fa-file-lines"></i> Project & Role</a></li>
-                    <li role="presentation"><a href="#tab_financials" aria-controls="tab_financials" role="tab" data-toggle="tab"><i class="fa-solid fa-coins"></i> Rates & Commission</a></li>
-                    <li role="presentation"><a href="#tab_usage" aria-controls="tab_usage" role="tab" data-toggle="tab"><i class="fa-solid fa-copyright"></i> Usage & Buyout</a></li>
-                    <li role="presentation"><a href="#tab_studio" aria-controls="tab_studio" role="tab" data-toggle="tab"><i class="fa-solid fa-microphone"></i> Studio & Session</a></li>
+                    <li role="presentation" class="active"><a href="#tab_general" aria-controls="tab_general" role="tab" data-toggle="tab"><i class="fa fa-file-text-o"></i> Project & Role</a></li>
+                    <li role="presentation"><a href="#tab_financials" aria-controls="tab_financials" role="tab" data-toggle="tab"><i class="fa fa-money"></i> Rates & Commission</a></li>
+                    <li role="presentation"><a href="#tab_usage" aria-controls="tab_usage" role="tab" data-toggle="tab"><i class="fa fa-copyright"></i> Usage & Buyout</a></li>
+                    <li role="presentation"><a href="#tab_studio" aria-controls="tab_studio" role="tab" data-toggle="tab"><i class="fa fa-microphone"></i> Studio & Audio</a></li>
                 </ul>
 
                 <div class="tab-content">
@@ -49,8 +54,10 @@
                                     <label for="client_id" class="control-label"><?php echo _l('ckm_tp_client'); ?></label>
                                     <select name="client_id" id="client_id" class="selectpicker" data-live-search="true" data-width="100%">
                                         <option value=""><?php echo _l('dropdown_non_selected_tex'); ?></option>
-                                        <?php foreach ($clients as $client) { ?>
-                                            <option value="<?php echo $client['userid']; ?>"><?php echo htmlspecialchars($client['company']); ?></option>
+                                        <?php if (!empty($clients)) { ?>
+                                            <?php foreach ($clients as $client) { ?>
+                                                <option value="<?php echo $client['userid']; ?>"><?php echo htmlspecialchars($client['company']); ?></option>
+                                            <?php } ?>
                                         <?php } ?>
                                     </select>
                                 </div>
@@ -66,8 +73,10 @@
                                     <label for="category_id" class="control-label"><?php echo _l('ckm_tp_category'); ?></label>
                                     <select name="category_id" id="category_id" class="selectpicker" data-width="100%">
                                         <option value=""><?php echo _l('dropdown_non_selected_tex'); ?></option>
-                                        <?php foreach ($categories as $cat) { ?>
-                                            <option value="<?php echo $cat['id']; ?>"><?php echo htmlspecialchars($cat['name']); ?></option>
+                                        <?php if (!empty($categories)) { ?>
+                                            <?php foreach ($categories as $cat) { ?>
+                                                <option value="<?php echo $cat['id']; ?>"><?php echo htmlspecialchars($cat['name']); ?></option>
+                                            <?php } ?>
                                         <?php } ?>
                                     </select>
                                 </div>
@@ -77,10 +86,12 @@
                                     <label for="source_id" class="control-label"><?php echo _l('ckm_tp_source'); ?></label>
                                     <select name="source_id" id="source_id" class="selectpicker" data-width="100%">
                                         <option value=""><?php echo _l('dropdown_non_selected_tex'); ?></option>
-                                        <?php foreach ($sources as $src) { ?>
-                                            <option value="<?php echo $src['id']; ?>" data-commission="<?php echo $src['default_commission']; ?>">
-                                                <?php echo htmlspecialchars($src['name']); ?> (<?php echo $src['default_commission']; ?>% comm)
-                                            </option>
+                                        <?php if (!empty($sources)) { ?>
+                                            <?php foreach ($sources as $src) { ?>
+                                                <option value="<?php echo $src['id']; ?>" data-commission="<?php echo $src['default_commission']; ?>">
+                                                    <?php echo htmlspecialchars($src['name']); ?> (<?php echo $src['default_commission']; ?>% comm)
+                                                </option>
+                                            <?php } ?>
                                         <?php } ?>
                                     </select>
                                 </div>
@@ -101,7 +112,7 @@
 
                         <div class="row">
                             <div class="col-md-12">
-                                <?php echo render_textarea('notes', 'ckm_tp_notes', '', ['rows' => 3, 'placeholder' => 'Character direction, tone, pronunciation guides, script links...']); ?>
+                                <?php echo render_textarea('notes', 'ckm_tp_notes', '', ['rows' => 3, 'placeholder' => 'Character direction, tone, pronunciation guides, script text...']); ?>
                             </div>
                         </div>
                     </div>
@@ -137,7 +148,7 @@
                                 <?php echo render_input('usage_medium', 'ckm_tp_usage_medium', '', 'text', ['placeholder' => 'e.g., Broadcast TV + Paid Social']); ?>
                             </div>
                             <div class="col-md-6">
-                                <?php echo render_input('usage_territory', 'ckm_tp_usage_territory', '', 'text', ['placeholder' => 'e.g., National (US) / Worldwide']); ?>
+                                <?php echo render_input('usage_territory', 'ckm_tp_usage_territory', '', 'text', ['placeholder' => 'e.g., National (UK) / Worldwide']); ?>
                             </div>
                         </div>
                         <div class="row">
@@ -151,7 +162,7 @@
                         </div>
                     </div>
 
-                    <!-- Tab 4: Studio & Session -->
+                    <!-- Tab 4: Studio & Audio Specs -->
                     <div role="tabpanel" class="tab-pane" id="tab_studio">
                         <div class="row">
                             <div class="col-md-6">
@@ -169,7 +180,7 @@
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <?php echo render_input('direction_link', 'ckm_tp_direction_link', '', 'text', ['placeholder' => 'e.g., https://cleanfeed.net/code or Source-Connect ID']); ?>
+                                <?php echo render_input('direction_link', 'ckm_tp_direction_link', '', 'text', ['placeholder' => 'e.g., Cleanfeed link or Source-Connect ID']); ?>
                             </div>
                         </div>
                         <div class="row">
@@ -181,8 +192,11 @@
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-md-12">
+                            <div class="col-md-6">
                                 <?php echo render_input('audio_specs', 'ckm_tp_audio_specs', '48kHz / 24-bit Mono WAV', 'text', ['placeholder' => 'e.g., 48kHz / 24-bit WAV raw, no processing']); ?>
+                            </div>
+                            <div class="col-md-6">
+                                <?php echo render_input('audio_link', 'Audition Audio / Take Link', '', 'text', ['placeholder' => 'e.g. Dropbox / Google Drive link to submitted MP3']); ?>
                             </div>
                         </div>
                     </div>
