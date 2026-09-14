@@ -1,0 +1,93 @@
+/* CKM Talent Pipeline Styles */
+.ckm-kanban-board {
+    overflow-x: auto;
+    padding-bottom: 15px;
+}
+
+.ckm-kanban-row {
+    display: flex;
+    gap: 15px;
+    min-width: 1400px;
+}
+
+.ckm-kanban-col {
+    flex: 1;
+    min-width: 210px;
+    background: #f4f6f9;
+    border-radius: 6px;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    max-height: 80vh;
+}
+
+.ckm-kanban-col-header {
+    padding: 10px 14px;
+    background: #fff;
+    border-bottom: 1px solid #e2e8f0;
+    border-radius: 5px 5px 0 0;
+}
+
+.ckm-kanban-cards-container {
+    padding: 10px;
+    overflow-y: auto;
+    flex-grow: 1;
+    min-height: 250px;
+}
+
+.ckm-kanban-cards-container.drag-over {
+    background: #e3f2fd;
+    border: 2px dashed #0288d1;
+}
+
+.ckm-card {
+    background: #fff;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 10px;
+    border: 1px solid #e0e0e0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    cursor: grab;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.ckm-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.ckm-card.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+}
+
+.ckm-card-title a {
+    color: #2c3e50;
+    text-decoration: none;
+}
+
+.ckm-card-title a:hover {
+    color: #0288d1;
+}
+
+.ckm-audio-badge {
+    display: inline-block;
+    background: #f1f5f9;
+    color: #475569;
+    padding: 2px 6px;
+    border-radius: 4px;
+    border: 1px solid #cbd5e1;
+}
+
+.ckm-card-footer {
+    border-top: 1px solid #f1f5f9;
+}
+
+/* Status Labels */
+.ckm-status-quote_sent { background-color: #0288d1; color: #fff; }
+.ckm-status-shortlisted { background-color: #fbc02d; color: #000; }
+.ckm-status-won { background-color: #43a047; color: #fff; }
+.ckm-status-in_progress { background-color: #8e24aa; color: #fff; }
+.ckm-status-delivered { background-color: #fb8c00; color: #fff; }
+.ckm-status-completed { background-color: #00897b; color: #fff; }
+.ckm-status-lost { background-color: #757575; color: #fff; }
