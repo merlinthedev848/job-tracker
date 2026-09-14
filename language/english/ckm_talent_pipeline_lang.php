@@ -17,7 +17,7 @@ $lang['ckm_tp_status_delivered']          = 'Delivered / In Review';
 $lang['ckm_tp_status_completed']          = 'Completed';
 
 // Job Card & Form Fields
-$lang['ckm_tp_new_job']                   = '+ New Job / Audition';
+$lang['ckm_tp_new_job']                   = 'New Job / Audition';
 $lang['ckm_tp_edit_job']                  = 'Edit Job / Audition';
 $lang['ckm_tp_job_title']                 = 'Project / Campaign Title';
 $lang['ckm_tp_client']                    = 'Client / Production Company';

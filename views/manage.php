@@ -73,7 +73,7 @@
                             <div role="tabpanel" class="tab-pane active" id="tab_pipeline">
                                 <!-- Unified Action & Filter Toolbar -->
                                 <div class="ckm-command-bar mbot20">
-                                    <div class="display-flex align-center flex-wrap gap-10">
+                                    <div class="ckm-toolbar-left">
                                         <button type="button" class="btn btn-info bold" onclick="new_talent_job();">
                                             <i class="fa fa-plus"></i> <?php echo _l('ckm_tp_new_job'); ?>
                                         </button>
@@ -111,7 +111,7 @@
                                         </div>
 
                                         <!-- Compact Genre Filter Select -->
-                                        <div class="display-flex align-center mleft10">
+                                        <div class="display-flex align-center mleft5">
                                             <i class="fa fa-filter text-muted mright5"></i>
                                             <select id="ckm_genre_select" class="form-control input-sm" style="width: 170px; border-radius: 16px;" onchange="filter_by_genre_select(this.value);">
                                                 <option value="all">All Genres</option>
@@ -124,7 +124,7 @@
                                         </div>
                                     </div>
 
-                                    <div class="display-flex align-center gap-10">
+                                    <div class="ckm-toolbar-right">
                                         <div class="ckm-live-search-box">
                                             <i class="fa fa-search ckm-search-icon"></i>
                                             <input type="text" id="ckm_search_input" class="form-control input-sm" placeholder="Search auditions...">

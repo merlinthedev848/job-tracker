@@ -1,5 +1,23 @@
 /* CKM Talent Pipeline Modern Styles */
 
+/* Core Flexbox Utilities (Required for Bootstrap 3 / Perfex) */
+.display-flex { display: flex !important; }
+.inline-flex { display: inline-flex !important; }
+.align-center { align-items: center !important; }
+.align-start { align-items: flex-start !important; }
+.align-end { align-items: flex-end !important; }
+.justify-between { justify-content: space-between !important; }
+.justify-center { justify-content: center !important; }
+.justify-end { justify-content: flex-end !important; }
+.flex-wrap { flex-wrap: wrap !important; }
+.flex-nowrap { flex-wrap: nowrap !important; }
+.flex-grow { flex-grow: 1 !important; }
+.gap-5 { gap: 5px !important; }
+.gap-8 { gap: 8px !important; }
+.gap-10 { gap: 10px !important; }
+.gap-15 { gap: 15px !important; }
+.gap-20 { gap: 20px !important; }
+
 .nav-pills > li > a {
     border-radius: 20px;
     padding: 6px 14px;
@@ -26,11 +44,30 @@
 }
 
 .ckm-command-bar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    margin-bottom: 20px !important;
+    gap: 12px !important;
+}
+
+.ckm-toolbar-left {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    flex-wrap: nowrap !important;
+}
+
+.ckm-toolbar-right {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    flex-wrap: nowrap !important;
+}
+
+.ckm-command-bar .dropdown {
+    display: inline-block !important;
 }
 
 .ckm-live-search-box {
