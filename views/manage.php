@@ -610,13 +610,28 @@
                                                     </div>
                                                 </div>
 
-                                                 <hr class="mtop20 mbot15">
-                                                 <div class="row">
-                                                     <div class="col-md-12">
-                                                         <h5 class="bold"><i class="fa fa-plug text-success"></i> Direct Inbound Webhook (Alternative to IMAP)</h5>
-                                                         <p class="text-muted font-xs mbot10">
-                                                             Connect Zapier, Make, CloudMailin, Mailgun, or SendGrid to instantly push incoming casting opportunities to this module with zero latency.
-                                                         </p>
+                                                <div class="mtop15 display-flex justify-between align-center">
+                                                    <div>
+                                                        <a href="<?php echo admin_url('ckm_talent_pipeline/check_inbox'); ?>" class="btn btn-default btn-sm">
+                                                            <i class="fa fa-refresh"></i> Check Inbox Now
+                                                        </a>
+                                                        <a href="<?php echo admin_url('ckm_talent_pipeline/test_webhook_simulator'); ?>" class="btn btn-default btn-sm mleft5" title="Generate simulated casting call">
+                                                            <i class="fa fa-magic text-warning"></i> Simulate Casting Email
+                                                        </a>
+                                                    </div>
+                                                    <button type="submit" class="btn btn-primary btn-sm bold">
+                                                        <i class="fa fa-save"></i> Save IMAP Settings
+                                                    </button>
+                                                </div>
+                                                <?php echo form_close(); ?>
+
+                                                <hr class="mtop20 mbot15">
+                                                <div class="row">
+                                                    <div class="col-md-12">
+                                                        <h5 class="bold"><i class="fa fa-plug text-success"></i> Direct Inbound Webhook (Alternative to IMAP)</h5>
+                                                        <p class="text-muted font-xs mbot10">
+                                                            Connect Zapier, Make, CloudMailin, Mailgun, or SendGrid to instantly push incoming casting opportunities to this module with zero latency.
+                                                        </p>
                                                          <div class="input-group">
                                                              <input type="text" class="form-control" id="ckm_webhook_url" readonly value="<?php echo site_url('ckm_talent_pipeline/webhook/' . get_option('ckm_talent_webhook_key')); ?>">
                                                              <span class="input-group-btn">
