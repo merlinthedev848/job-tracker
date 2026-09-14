@@ -92,14 +92,24 @@ if (!empty($jobs)) {
                                         <button class="btn btn-default btn-xs dropdown-toggle" type="button" data-toggle="dropdown">
                                             <i class="fa fa-ellipsis-v"></i>
                                         </button>
-                                        <ul class="dropdown-menu dropdown-menu-right">
+                                        <ul class="dropdown-menu dropdown-menu-right font-xs">
                                             <li><a href="#" onclick="edit_talent_job(<?php echo $job['id']; ?>); return false;"><i class="fa fa-pencil"></i> <?php echo _l('edit'); ?></a></li>
-                                            <li><a href="<?php echo admin_url('ckm_talent_pipeline/duplicate/' . $job['id']); ?>"><i class="fa fa-clone text-info"></i> Duplicate (Repeat Job)</a></li>
-                                            <?php if (empty($job['perfex_invoice_id']) && !in_array($job['status'], ['lost'])) { ?>
+                                            <li><a href="#" onclick="open_teleprompter_for_job(<?php echo $job['id']; ?>, '<?php echo htmlspecialchars(addslashes($job['job_title'])); ?>', <?php echo json_encode($job['script_text'] ?? $job['notes'] ?? ''); ?>, <?php echo json_encode($job['take_notes'] ?? ''); ?>); return false;"><i class="fa fa-microphone text-primary"></i> Teleprompter &amp; Takes</a></li>
+                                            <li><a href="#" onclick="open_revisions_modal(<?php echo $job['id']; ?>, '<?php echo htmlspecialchars(addslashes($job['job_title'])); ?>'); return false;"><i class="fa fa-refresh text-warning"></i> Pickups &amp; Revisions <?php echo (!empty($job['revisions_count']) && $job['revisions_count'] > 0) ? '(' . $job['revisions_count'] . ')' : ''; ?></a></li>
+                                            <?php if ($job['status'] == 'quote_sent') { ?>
+                                                <li><a href="#" onclick="open_audition_nudge_modal(<?php echo $job['id']; ?>, '', '<?php echo htmlspecialchars(addslashes($job['job_title'])); ?>'); return false;"><i class="fa fa-paper-plane text-info"></i> Send Audition Nudge</a></li>
+                                            <?php } ?>
+                                            <li><a href="#" onclick="open_ai_rider_modal('<?php echo htmlspecialchars(addslashes($job['job_title'])); ?>'); return false;"><i class="fa fa-shield text-danger"></i> NAVA AI Protection Rider</a></li>
+                                            <li class="divider"></li>
+                                            <?php if (empty($job['perfex_estimate_id']) && !empty($job['client_id'])) { ?>
+                                                <li><a href="<?php echo admin_url('ckm_talent_pipeline/convert_to_estimate/' . $job['id']); ?>"><i class="fa fa-file-pdf-o text-primary"></i> Create Perfex Estimate / Quote</a></li>
+                                            <?php } ?>
+                                            <?php if (empty($job['perfex_invoice_id']) && !in_array($job['status'], ['lost']) && !empty($job['client_id'])) { ?>
                                                 <li><a href="<?php echo admin_url('ckm_talent_pipeline/convert_to_invoice/' . $job['id']); ?>"><i class="fa fa-file-text-o text-success"></i> <?php echo _l('ckm_tp_convert_to_invoice'); ?></a></li>
                                             <?php } elseif (!empty($job['perfex_invoice_id'])) { ?>
                                                 <li><a href="<?php echo admin_url('invoices/invoice/' . $job['perfex_invoice_id']); ?>"><i class="fa fa-file-text"></i> <?php echo _l('ckm_tp_view_invoice'); ?></a></li>
                                             <?php } ?>
+                                            <li><a href="<?php echo admin_url('ckm_talent_pipeline/duplicate/' . $job['id']); ?>"><i class="fa fa-clone text-info"></i> Duplicate (Repeat Job)</a></li>
                                             <li class="divider"></li>
                                             <li><a href="<?php echo admin_url('ckm_talent_pipeline/delete/' . $job['id']); ?>" class="text-danger _delete"><i class="fa fa-trash"></i> <?php echo _l('delete'); ?></a></li>
                                         </ul>
@@ -120,33 +130,37 @@ if (!empty($jobs)) {
                                     <?php } ?>
                                     <?php if (!empty($job['agent_name'])) { ?>
                                         <span class="mleft5"><i class="fa fa-user-secret"></i> <?php echo htmlspecialchars($job['agent_name']); ?></span>
+                                    <?php } elseif (!empty($job['agent_rep_agency'])) { ?>
+                                        <span class="mleft5"><i class="fa fa-user-secret"></i> <?php echo htmlspecialchars($job['agent_rep_agency']); ?></span>
                                     <?php } elseif (!empty($job['source_name'])) { ?>
                                         <span class="mleft5"><i class="fa fa-tag"></i> <?php echo htmlspecialchars($job['source_name']); ?></span>
                                     <?php } ?>
                                 </div>
 
-                                <!-- Role, Word Count & Audio Take -->
-                                <?php 
-                                $is_custom_role = !empty($job['role_name']) && !in_array(strtolower(trim($job['role_name'])), ['voice talent / performer', 'voice talent', 'performer']);
-                                ?>
-                                <?php if ($is_custom_role || !empty($job['word_count']) || !empty($job['audio_link'])) { ?>
-                                    <div class="font-xs mbot8 text-dark display-flex justify-between align-center flex-wrap">
-                                        <div>
-                                            <?php if ($is_custom_role) { ?>
-                                                <span class="label label-info"><i class="fa fa-user-o"></i> <?php echo htmlspecialchars($job['role_name']); ?></span>
-                                            <?php } ?>
-                                            <?php if (!empty($job['word_count'])) { ?>
-                                                <span class="label label-default mleft5"><?php echo number_format($job['word_count']); ?>w</span>
-                                            <?php } ?>
-                                        </div>
-
-                                        <?php if (!empty($job['audio_link'])) { ?>
-                                            <a href="<?php echo htmlspecialchars($job['audio_link']); ?>" target="_blank" class="btn btn-xs btn-info" title="Play Audition Take / Audio File">
-                                                <i class="fa fa-play-circle"></i> Audio
-                                            </a>
+                                <!-- Role, Word Count & Revisions Badge -->
+                                <div class="font-xs mbot8 text-dark display-flex justify-between align-center flex-wrap gap-5">
+                                    <div>
+                                        <?php 
+                                        $is_custom_role = !empty($job['role_name']) && !in_array(strtolower(trim($job['role_name'])), ['voice talent / performer', 'voice talent', 'performer']);
+                                        if ($is_custom_role) { ?>
+                                            <span class="label label-info"><i class="fa fa-user-o"></i> <?php echo htmlspecialchars($job['role_name']); ?></span>
+                                        <?php } ?>
+                                        <?php if (!empty($job['word_count'])) { ?>
+                                            <span class="label label-default mleft5"><?php echo number_format($job['word_count']); ?>w</span>
+                                        <?php } ?>
+                                        <?php if (!empty($job['revisions_count']) && $job['revisions_count'] > 0) { ?>
+                                            <span class="badge bg-warning text-dark mleft5" style="cursor: pointer;" onclick="open_revisions_modal(<?php echo $job['id']; ?>, '<?php echo htmlspecialchars(addslashes($job['job_title'])); ?>');" title="Pickup Rounds">
+                                                <i class="fa fa-refresh"></i> <?php echo $job['revisions_count']; ?> Pickups
+                                            </span>
                                         <?php } ?>
                                     </div>
-                                <?php } ?>
+
+                                    <?php if (!empty($job['audio_link'])) { ?>
+                                        <a href="<?php echo htmlspecialchars($job['audio_link']); ?>" target="_blank" class="btn btn-xs btn-info" title="Play Audition Take / Audio File">
+                                            <i class="fa fa-play-circle"></i> Audio
+                                        </a>
+                                    <?php } ?>
+                                </div>
 
                                 <!-- Directed Session Badge -->
                                 <?php if (!empty($job['direction_type']) && $job['direction_type'] != 'Self-Record') { ?>
@@ -169,19 +183,22 @@ if (!empty($jobs)) {
 
                                 <!-- Hover Quick-Action Bar -->
                                 <div class="ckm-card-quick-actions">
+                                    <button type="button" class="btn btn-xs btn-primary" onclick="open_teleprompter_for_job(<?php echo $job['id']; ?>, '<?php echo htmlspecialchars(addslashes($job['job_title'])); ?>', <?php echo json_encode($job['script_text'] ?? $job['notes'] ?? ''); ?>, <?php echo json_encode($job['take_notes'] ?? ''); ?>);" title="Teleprompter & Take Stopwatch">
+                                        <i class="fa fa-microphone"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-xs btn-warning" onclick="open_revisions_modal(<?php echo $job['id']; ?>, '<?php echo htmlspecialchars(addslashes($job['job_title'])); ?>');" title="Pickups & Revisions">
+                                        <i class="fa fa-refresh"></i>
+                                    </button>
+                                    <?php if ($job['status'] == 'quote_sent') { ?>
+                                        <button type="button" class="btn btn-xs btn-info" onclick="open_audition_nudge_modal(<?php echo $job['id']; ?>, '', '<?php echo htmlspecialchars(addslashes($job['job_title'])); ?>');" title="Send Audition Nudge">
+                                            <i class="fa fa-paper-plane"></i>
+                                        </button>
+                                    <?php } ?>
                                     <?php if ($job['status'] != 'won') { ?>
                                         <button type="button" class="btn btn-xs btn-success" onclick="quick_change_card_status(<?php echo $job['id']; ?>, 'won');" title="Mark as Won">
                                             <i class="fa fa-trophy"></i> Won
                                         </button>
                                     <?php } ?>
-                                    <?php if ($job['status'] != 'in_progress') { ?>
-                                        <button type="button" class="btn btn-xs btn-info" onclick="quick_change_card_status(<?php echo $job['id']; ?>, 'in_progress');" title="Start Production">
-                                            <i class="fa fa-microphone"></i> Record
-                                        </button>
-                                    <?php } ?>
-                                    <a href="<?php echo admin_url('ckm_talent_pipeline/duplicate/' . $job['id']); ?>" class="btn btn-xs btn-default" title="Duplicate / Repeat Booking">
-                                        <i class="fa fa-clone text-info"></i>
-                                    </a>
                                     <?php if ($job['status'] != 'lost') { ?>
                                         <button type="button" class="btn btn-xs btn-default text-danger" onclick="trigger_loss_modal(<?php echo $job['id']; ?>);" title="Mark as Lost">
                                             <i class="fa fa-times"></i>

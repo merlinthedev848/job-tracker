@@ -10,9 +10,14 @@
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 <div class="display-flex justify-between align-center mright25">
                     <h4 class="modal-title" id="talent_job_modal_title"><?php echo _l('ckm_tp_new_job'); ?></h4>
-                    <button type="button" class="btn btn-xs btn-info" onclick="$('#rate_calculator_modal').modal('show');">
-                        <i class="fa fa-calculator"></i> Rate Calculator
-                    </button>
+                    <div class="display-flex gap-5">
+                        <button type="button" class="btn btn-xs btn-info" onclick="$('#rate_calculator_modal').modal('show');">
+                            <i class="fa fa-calculator"></i> Rate Engine
+                        </button>
+                        <button type="button" class="btn btn-xs btn-default" onclick="$('#file_namer_modal').modal('show');">
+                            <i class="fa fa-tag"></i> Slate & File Namer
+                        </button>
+                    </div>
                 </div>
             </div>
             
@@ -21,7 +26,7 @@
                 <ul class="nav nav-tabs mbot15" role="tablist">
                     <li role="presentation" class="active"><a href="#tab_general" aria-controls="tab_general" role="tab" data-toggle="tab"><i class="fa fa-file-text-o"></i> Project & Role</a></li>
                     <li role="presentation"><a href="#tab_financials" aria-controls="tab_financials" role="tab" data-toggle="tab"><i class="fa fa-money"></i> Rates & Commission</a></li>
-                    <li role="presentation"><a href="#tab_usage" aria-controls="tab_usage" role="tab" data-toggle="tab"><i class="fa fa-copyright"></i> Usage & Buyout</a></li>
+                    <li role="presentation"><a href="#tab_usage" aria-controls="tab_usage" role="tab" data-toggle="tab"><i class="fa fa-copyright"></i> Usage, Buyout & AI Rider</a></li>
                     <li role="presentation"><a href="#tab_studio" aria-controls="tab_studio" role="tab" data-toggle="tab"><i class="fa fa-microphone"></i> Studio & Audio</a></li>
                 </ul>
 
@@ -63,7 +68,19 @@
                                 </div>
                             </div>
                             <div class="col-md-6">
-                                <?php echo render_input('agent_name', 'ckm_tp_agent_name', '', 'text', ['placeholder' => 'e.g., Creative Artists Agency / VO Agent']); ?>
+                                <div class="form-group">
+                                    <label for="agent_id" class="control-label">Representing Agency / Agent</label>
+                                    <select name="agent_id" id="agent_id" class="selectpicker" data-width="100%" onchange="on_agent_select_change(this);">
+                                        <option value="">Direct Client / Self-Submitted (0% Comm)</option>
+                                        <?php if (!empty($agents)) { ?>
+                                            <?php foreach ($agents as $ag) { ?>
+                                                <option value="<?php echo $ag['id']; ?>" data-comm="<?php echo $ag['commission_percent']; ?>" data-name="<?php echo htmlspecialchars($ag['agency_name']); ?>">
+                                                    <?php echo htmlspecialchars($ag['agency_name']); ?> (<?php echo htmlspecialchars($ag['name']); ?> - <?php echo $ag['commission_percent']; ?>%)
+                                                </option>
+                                            <?php } ?>
+                                        <?php } ?>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
@@ -112,7 +129,7 @@
 
                         <div class="row">
                             <div class="col-md-12">
-                                <?php echo render_textarea('notes', 'ckm_tp_notes', '', ['rows' => 3, 'placeholder' => 'Character direction, tone, pronunciation guides, script text...']); ?>
+                                <?php echo render_textarea('notes', 'ckm_tp_notes', '', ['rows' => 3, 'placeholder' => 'Character direction, tone, pronunciation guides, casting requirements...']); ?>
                             </div>
                         </div>
                     </div>
@@ -160,6 +177,13 @@
                                 <small class="text-muted">Perfex will alert you 30 days before this date to pitch a renewal.</small>
                             </div>
                         </div>
+
+                        <div class="checkbox checkbox-primary mtop15">
+                            <input type="checkbox" name="ai_rider_included" id="modal_ai_rider" value="1" checked>
+                            <label for="modal_ai_rider" class="bold text-dark">
+                                <i class="fa fa-shield text-danger"></i> Attach NAVA AI & Synthetic Voice Protection Rider to Quotes & Proposals
+                            </label>
+                        </div>
                     </div>
 
                     <!-- Tab 4: Studio & Audio Specs -->
@@ -170,7 +194,7 @@
                                     <label for="direction_type" class="control-label">Direction Method</label>
                                     <select name="direction_type" id="direction_type" class="selectpicker" data-width="100%">
                                         <option value="Self-Record">Self-Record & Deliver</option>
-                                        <option value="Cleanfeed">Cleanfeed</option>
+                                        <option value="Cleanfeed">Cleanfeed Pro</option>
                                         <option value="Source-Connect">Source-Connect (Standard/Now)</option>
                                         <option value="Zoom / Teams">Zoom / Microsoft Teams</option>
                                         <option value="Riverside.fm">Riverside.fm</option>
@@ -204,11 +228,31 @@
                 </div>
             </div>
 
-            <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('close'); ?></button>
-                <button type="submit" class="btn btn-primary"><?php echo _l('submit'); ?></button>
+            <div class="modal-footer display-flex justify-between align-center">
+                <div id="job_modal_extra_actions" style="display: none;">
+                    <button type="button" class="btn btn-default btn-sm" id="btn_modal_revisions" onclick="open_revisions_modal($('#job_id').val(), $('#job_title').val());">
+                        <i class="fa fa-refresh text-warning"></i> Pickups & Revisions
+                    </button>
+                    <button type="button" class="btn btn-default btn-sm" id="btn_modal_prompter" onclick="open_teleprompter_for_job($('#job_id').val(), $('#job_title').val(), $('#notes').val());">
+                        <i class="fa fa-microphone text-primary"></i> Teleprompter
+                    </button>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('close'); ?></button>
+                    <button type="submit" class="btn btn-primary bold"><?php echo _l('submit'); ?></button>
+                </div>
             </div>
         </div>
         <?php echo form_close(); ?>
     </div>
 </div>
+
+<script>
+function on_agent_select_change(sel) {
+    var opt = $(sel).find(':selected');
+    var comm = opt.data('comm');
+    if (comm !== undefined && comm !== '') {
+        $('#modal_commission').val(comm).trigger('input');
+    }
+}
+</script>

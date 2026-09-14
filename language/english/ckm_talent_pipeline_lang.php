@@ -64,3 +64,8 @@ $lang['ckm_tp_audition_conversion_rate']  = 'Audition-to-Booking Rate';
 $lang['ckm_tp_pipeline_value']            = 'Pipeline Value';
 $lang['ckm_tp_won_revenue']               = 'Booked / Won Revenue';
 $lang['ckm_tp_expiring_licenses_alert']   = 'You have %s buyout license(s) expiring within the next 30 days!';
+$lang['ckm_tp_convert_to_estimate']       = 'Convert to Perfex Estimate / Quote';
+$lang['ckm_tp_revisions_title']           = 'Pickups & Revisions';
+$lang['ckm_tp_ai_rider_title']            = 'NAVA AI Protection Rider';
+$lang['ckm_tp_teleprompter_title']        = 'Script Teleprompter & Live Take Timer';
+

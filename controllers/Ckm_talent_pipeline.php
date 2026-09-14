@@ -37,11 +37,14 @@ class Ckm_talent_pipeline extends AdminController
         $data['source_stats']      = $this->ckm_talent_pipeline_model->get_source_stats();
         $data['loss_stats']        = $this->ckm_talent_pipeline_model->get_loss_stats();
         
-        // Creative Pro Modules: Sessions, Buyouts Radar, Stay-in-Touch, Inbound Potentials
+        // Creative Pro Modules: Sessions, Buyouts Radar, Stay-in-Touch, Inbound Potentials, Agents & Expenses
         $data['upcoming_sessions'] = $this->ckm_talent_pipeline_model->get_upcoming_sessions();
         $data['expiring_licenses'] = $this->ckm_talent_pipeline_model->get_expiring_licenses();
         $data['dormant_clients']   = $this->ckm_talent_pipeline_model->get_dormant_clients();
         $data['potentials']        = $this->ckm_talent_pipeline_model->get_pending_potentials();
+        $data['agents']            = $this->ckm_talent_pipeline_model->get_agents(false);
+        $data['expenses']          = $this->ckm_talent_pipeline_model->get_expenses();
+        $data['expense_summary']   = $this->ckm_talent_pipeline_model->get_expense_summary();
         
         $data['view_mode']         = $this->input->get('view') ?: 'kanban';
         $data['active_tab']        = $this->input->get('tab') ?: 'pipeline';
@@ -500,5 +503,215 @@ class Ckm_talent_pipeline extends AdminController
             set_alert('success', _l('deleted', _l('ckm_tp_module_name')));
         }
         redirect(admin_url('ckm_talent_pipeline'));
+    }
+
+    /**
+     * 1-Click Convert Job to Perfex Estimate
+     */
+    public function convert_to_estimate($id)
+    {
+        if (!has_permission('estimates', '', 'create') && !is_admin()) {
+            access_denied('estimates');
+        }
+
+        $estimate_id = $this->ckm_talent_pipeline_model->create_perfex_estimate($id);
+
+        if ($estimate_id) {
+            set_alert('success', 'Official Perfex Quote / Estimate #' . $estimate_id . ' created successfully with NAVA AI protection clause!');
+            redirect(admin_url('estimates/estimate/' . $estimate_id));
+        } else {
+            set_alert('danger', 'Unable to create estimate. Make sure a client is selected for this job.');
+            redirect(admin_url('ckm_talent_pipeline'));
+        }
+    }
+
+    /**
+     * Get Pickups & Revisions for a Job via AJAX
+     */
+    public function get_revisions($job_id)
+    {
+        if ($this->input->is_ajax_request()) {
+            $revisions = $this->ckm_talent_pipeline_model->get_revisions($job_id);
+            echo json_encode($revisions);
+            die();
+        }
+    }
+
+    /**
+     * Save Pickup / Revision Round via AJAX
+     */
+    public function save_revision()
+    {
+        if ($this->input->is_ajax_request()) {
+            $data = $this->input->post();
+            $id = isset($data['id']) ? $data['id'] : '';
+            unset($data['id']);
+
+            if (empty($id)) {
+                $rev_id = $this->ckm_talent_pipeline_model->add_revision($data);
+                echo json_encode(['success' => (bool)$rev_id, 'id' => $rev_id]);
+            } else {
+                $success = $this->ckm_talent_pipeline_model->update_revision($id, $data);
+                echo json_encode(['success' => $success, 'id' => $id]);
+            }
+            die();
+        }
+    }
+
+    /**
+     * Delete Pickup / Revision Round
+     */
+    public function delete_revision($id)
+    {
+        if ($this->input->is_ajax_request()) {
+            $success = $this->ckm_talent_pipeline_model->delete_revision($id);
+            echo json_encode(['success' => $success]);
+            die();
+        }
+    }
+
+    /**
+     * Save Agent Profile
+     */
+    public function save_agent()
+    {
+        if ($this->input->post()) {
+            $data = $this->input->post();
+            $id = isset($data['id']) ? $data['id'] : '';
+            unset($data['id']);
+
+            $this->ckm_talent_pipeline_model->save_agent($data, $id);
+            set_alert('success', 'Agency representation profile saved successfully!');
+            redirect(admin_url('ckm_talent_pipeline?tab=crm'));
+        }
+    }
+
+    /**
+     * Delete Agent Profile
+     */
+    public function delete_agent($id)
+    {
+        $this->ckm_talent_pipeline_model->delete_agent($id);
+        set_alert('warning', 'Agent profile removed.');
+        redirect(admin_url('ckm_talent_pipeline?tab=crm'));
+    }
+
+    /**
+     * Save Voice Actor Expense
+     */
+    public function save_expense()
+    {
+        if ($this->input->post()) {
+            $data = $this->input->post();
+            $id = isset($data['id']) ? $data['id'] : '';
+            unset($data['id']);
+
+            $this->ckm_talent_pipeline_model->save_expense($data, $id);
+            set_alert('success', 'Voice actor business expense recorded!');
+            redirect(admin_url('ckm_talent_pipeline?tab=analytics'));
+        }
+    }
+
+    /**
+     * Delete Expense
+     */
+    public function delete_expense($id)
+    {
+        $this->ckm_talent_pipeline_model->delete_expense($id);
+        set_alert('warning', 'Expense record deleted.');
+        redirect(admin_url('ckm_talent_pipeline?tab=analytics'));
+    }
+
+    /**
+     * Save Voice Actor Studio Profile & Tech Settings
+     */
+    public function save_studio_profile()
+    {
+        if ($this->input->post()) {
+            $fields = [
+                'ckm_tp_actor_name',
+                'ckm_tp_actor_email',
+                'ckm_tp_actor_phone',
+                'ckm_tp_actor_website',
+                'ckm_tp_mic_chain',
+                'ckm_tp_daw_booth',
+                'ckm_tp_source_connect_id',
+                'ckm_tp_cleanfeed_link',
+                'ckm_tp_ipdtl_id',
+                'ckm_tp_sessionlink_id',
+                'ckm_tp_zoom_riverside',
+                'ckm_tp_default_free_revisions'
+            ];
+
+            foreach ($fields as $field) {
+                if ($this->input->post($field) !== null) {
+                    update_option($field, $this->input->post($field));
+                }
+            }
+
+            set_alert('success', 'Voice Actor Studio Profile & Tech Specs updated!');
+            redirect(admin_url('ckm_talent_pipeline?tab=crm'));
+        }
+    }
+
+    /**
+     * Get NAVA AI Protection Rider Text via AJAX
+     */
+    public function get_nava_rider($job_id = null)
+    {
+        if ($this->input->is_ajax_request()) {
+            $text = $this->ckm_talent_pipeline_model->get_nava_rider_text($job_id);
+            echo json_encode(['rider_text' => $text]);
+            die();
+        }
+    }
+
+    /**
+     * Get Audition Follow-Up Nudge Text via AJAX
+     */
+    public function get_audition_nudge($job_id)
+    {
+        if ($this->input->is_ajax_request()) {
+            $text = $this->ckm_talent_pipeline_model->generate_audition_nudge_text($job_id);
+            echo json_encode(['nudge_text' => $text]);
+            die();
+        }
+    }
+
+    /**
+     * Export Recording Take & Cue Sheet (Download Text File)
+     */
+    public function export_take_sheet($job_id)
+    {
+        $sheet = $this->ckm_talent_pipeline_model->export_take_sheet($job_id);
+        $filename = 'Take_Sheet_Job_' . $job_id . '_' . date('Ymd_His') . '.txt';
+
+        header('Content-Type: text/plain; charset=utf-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        echo $sheet;
+        exit;
+    }
+
+    /**
+     * Save Script Text & Take Notes from Teleprompter via AJAX
+     */
+    public function save_script_takes()
+    {
+        if ($this->input->is_ajax_request()) {
+            $job_id = $this->input->post('job_id');
+            $script_text = $this->input->post('script_text');
+            $take_notes = $this->input->post('take_notes');
+
+            if ($job_id) {
+                $this->ckm_talent_pipeline_model->update($job_id, [
+                    'script_text' => $script_text,
+                    'take_notes'  => $take_notes
+                ]);
+                echo json_encode(['success' => true]);
+                die();
+            }
+            echo json_encode(['success' => false]);
+            die();
+        }
     }
 }

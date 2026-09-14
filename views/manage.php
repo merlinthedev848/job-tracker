@@ -98,13 +98,29 @@
                                                     </a>
                                                 </li>
                                                 <li>
-                                                    <a href="#" onclick="$('#smart_parser_modal').modal('show'); return false;">
-                                                        <i class="fa fa-bolt text-info"></i> Paste Casting Call (Smart Parser)
+                                                    <a href="#" onclick="$('#file_namer_modal').modal('show'); return false;">
+                                                        <i class="fa fa-tag text-success"></i> Audio Slate & File Naming Generator
                                                     </a>
                                                 </li>
                                                 <li>
+                                                    <a href="#" onclick="$('#studio_tech_specs_modal').modal('show'); return false;">
+                                                        <i class="fa fa-sliders text-info"></i> Studio Specs & Remote Profile
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="#" onclick="$('#ai_rider_modal').modal('show'); return false;">
+                                                        <i class="fa fa-shield text-danger"></i> NAVA AI & Voice Protection Rider
+                                                    </a>
+                                                </li>
+                                                <li class="divider"></li>
+                                                <li>
                                                     <a href="#" onclick="$('#rate_calculator_modal').modal('show'); return false;">
                                                         <i class="fa fa-calculator text-success"></i> VO Rate Engine & GVAA Guide
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="#" onclick="$('#smart_parser_modal').modal('show'); return false;">
+                                                        <i class="fa fa-bolt text-warning"></i> Paste Casting Call (Smart Parser)
                                                     </a>
                                                 </li>
                                             </ul>
@@ -298,7 +314,7 @@
                                         <div class="panel panel-default">
                                             <div class="panel-heading bold text-danger"><i class="fa fa-times-circle"></i> Why Auditions / Quotes Were Lost</div>
                                             <div class="panel-body">
-                                                <table class="table table-bordered">
+                                                <table class="table table-bordered font-xs">
                                                     <thead>
                                                         <tr>
                                                             <th>Reason</th>
@@ -321,13 +337,61 @@
                                             </div>
                                         </div>
                                     </div>
+
+                                    <!-- Voice Actor Business Expenses & Gear Ledger -->
+                                    <div class="col-md-6">
+                                        <div class="panel panel-default">
+                                            <div class="panel-heading bold display-flex justify-between align-center">
+                                                <span><i class="fa fa-shopping-cart text-warning"></i> VO Studio Expenses & Deductions</span>
+                                                <button type="button" class="btn btn-default btn-xs" onclick="$('#expense_modal').modal('show');">
+                                                    <i class="fa fa-plus"></i> Log Expense
+                                                </button>
+                                            </div>
+                                            <div class="panel-body p10">
+                                                <div class="display-flex justify-between font-xs mbot10">
+                                                    <span>Year-to-Date Deductions: <strong class="text-danger"><?php echo ckm_format_money($expense_summary['year_expenses']); ?></strong></span>
+                                                    <span>Total All-Time: <strong class="text-muted"><?php echo ckm_format_money($expense_summary['total_expenses']); ?></strong></span>
+                                                </div>
+                                                <div class="table-responsive" style="max-height: 220px; overflow-y: auto;">
+                                                    <table class="table table-bordered table-striped font-xs">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Date</th>
+                                                                <th>Category</th>
+                                                                <th>Item</th>
+                                                                <th>Amount</th>
+                                                                <th>Action</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <?php if (!empty($expenses)) { ?>
+                                                                <?php foreach ($expenses as $exp) { ?>
+                                                                    <tr>
+                                                                        <td><?php echo _d($exp['expense_date']); ?></td>
+                                                                        <td><span class="badge bg-light text-dark border"><?php echo htmlspecialchars($exp['category']); ?></span></td>
+                                                                        <td><?php echo htmlspecialchars($exp['description']); ?></td>
+                                                                        <td class="bold text-danger"><?php echo ckm_format_money($exp['amount']); ?></td>
+                                                                        <td class="text-center">
+                                                                            <a href="<?php echo admin_url('ckm_talent_pipeline/delete_expense/' . $exp['id']); ?>" class="text-danger _delete"><i class="fa fa-trash"></i></a>
+                                                                        </td>
+                                                                    </tr>
+                                                                <?php } ?>
+                                                            <?php } else { ?>
+                                                                <tr><td colspan="5" class="text-center text-muted">No studio expenses logged yet.</td></tr>
+                                                            <?php } ?>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
                             <!-- TAB 3: EXPIRING BUYOUTS & RENEWALS RADAR -->
                             <div role="tabpanel" class="tab-pane" id="tab_buyouts">
                                 <div class="alert alert-warning">
-                                    <i class="fa fa-clock-o"></i> <strong>Passive Renewal Engine:</strong> These commercial and corporate buyout licenses are expiring within the next 90 days. Click <strong>"Pitch Buyout Extension"</strong> to duplicate the job into a new quote for license extension.
+                                    <i class="fa fa-clock-o"></i> <strong>Passive Renewal Engine:</strong> These commercial and corporate buyout licenses are expiring within the next 90 days. Click <strong>"Pitch Buyout Extension"</strong> to draft a personalized renewal email.
                                 </div>
 
                                 <div class="table-responsive">
@@ -377,8 +441,106 @@
                                 </div>
                             </div>
 
-                            <!-- TAB 4: SETTINGS & MAILBOX MONITOR -->
+                            <!-- TAB 4: SETTINGS, STUDIO PROFILE & MAILBOX MONITOR -->
                             <div role="tabpanel" class="tab-pane" id="tab_crm">
+                                <!-- Voice Actor Home Studio Profile & Tech Specs -->
+                                <div class="row mbot20">
+                                    <div class="col-md-12">
+                                        <div class="panel panel-default">
+                                            <div class="panel-heading bold"><i class="fa fa-microphone text-info"></i> Voice Actor Studio Profile & Tech Specs</div>
+                                            <div class="panel-body">
+                                                <?php echo form_open(admin_url('ckm_talent_pipeline/save_studio_profile')); ?>
+                                                <div class="row">
+                                                    <div class="col-md-3">
+                                                        <label class="control-label bold">Performer / Stage Name:</label>
+                                                        <input type="text" name="ckm_tp_actor_name" class="form-control input-sm" value="<?php echo htmlspecialchars(get_option('ckm_tp_actor_name') ?: (get_option('companyname') ?: 'Voice Actor')); ?>">
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="control-label bold">Studio Email:</label>
+                                                        <input type="email" name="ckm_tp_actor_email" class="form-control input-sm" value="<?php echo htmlspecialchars(get_option('ckm_tp_actor_email')); ?>">
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="control-label bold">Source-Connect ID:</label>
+                                                        <input type="text" name="ckm_tp_source_connect_id" class="form-control input-sm" value="<?php echo htmlspecialchars(get_option('ckm_tp_source_connect_id')); ?>" placeholder="e.g. your_sc_handle">
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="control-label bold">Cleanfeed Pro Link:</label>
+                                                        <input type="text" name="ckm_tp_cleanfeed_link" class="form-control input-sm" value="<?php echo htmlspecialchars(get_option('ckm_tp_cleanfeed_link')); ?>" placeholder="https://cleanfeed.net/...">
+                                                    </div>
+                                                </div>
+                                                <div class="row mtop10">
+                                                    <div class="col-md-6">
+                                                        <label class="control-label bold">Microphone & Preamp Chain:</label>
+                                                        <input type="text" name="ckm_tp_mic_chain" class="form-control input-sm" value="<?php echo htmlspecialchars(get_option('ckm_tp_mic_chain')); ?>" placeholder="e.g. Sennheiser MKH 416 / Neumann TLM 103 -> Apollo Twin X">
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <label class="control-label bold">DAW & Acoustic Booth Treatment:</label>
+                                                        <input type="text" name="ckm_tp_daw_booth" class="form-control input-sm" value="<?php echo htmlspecialchars(get_option('ckm_tp_daw_booth')); ?>" placeholder="e.g. Reaper / Pro Tools | Custom Acoustic Isolation Booth (-62dB Noise Floor)">
+                                                    </div>
+                                                </div>
+                                                <div class="row mtop10">
+                                                    <div class="col-md-12">
+                                                        <label class="control-label bold">Standard Pickup Policy Statement:</label>
+                                                        <input type="text" name="ckm_tp_default_free_revisions" class="form-control input-sm" value="<?php echo htmlspecialchars(get_option('ckm_tp_default_free_revisions')); ?>">
+                                                    </div>
+                                                </div>
+                                                <div class="mtop15 text-right">
+                                                    <button type="submit" class="btn btn-primary btn-sm bold"><i class="fa fa-save"></i> Save Studio Profile</button>
+                                                </div>
+                                                <?php echo form_close(); ?>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Agency Roster & Multi-Agent Representation -->
+                                <div class="row mbot20">
+                                    <div class="col-md-12">
+                                        <div class="panel panel-default">
+                                            <div class="panel-heading bold display-flex justify-between align-center">
+                                                <span><i class="fa fa-users text-primary"></i> Agency Roster & Multi-Agent Representation</span>
+                                                <button type="button" class="btn btn-default btn-xs" onclick="$('#agent_modal').modal('show');">
+                                                    <i class="fa fa-plus"></i> Add Agency / Agent
+                                                </button>
+                                            </div>
+                                            <div class="panel-body">
+                                                <div class="table-responsive">
+                                                    <table class="table table-bordered table-striped font-xs">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Agency Name</th>
+                                                                <th>Agent / Contact</th>
+                                                                <th>Territory / Division</th>
+                                                                <th>Commission %</th>
+                                                                <th>Payment Terms</th>
+                                                                <th>Action</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <?php if (!empty($agents)) { ?>
+                                                                <?php foreach ($agents as $ag) { ?>
+                                                                    <tr>
+                                                                        <td class="bold"><?php echo htmlspecialchars($ag['agency_name']); ?></td>
+                                                                        <td><?php echo htmlspecialchars($ag['name']); ?> (<?php echo htmlspecialchars($ag['email'] ?: '-'); ?>)</td>
+                                                                        <td><span class="badge bg-light text-dark border"><?php echo htmlspecialchars($ag['territory']); ?></span></td>
+                                                                        <td class="bold text-primary"><?php echo $ag['commission_percent']; ?>%</td>
+                                                                        <td><?php echo htmlspecialchars($ag['payment_terms']); ?></td>
+                                                                        <td class="text-center">
+                                                                            <a href="<?php echo admin_url('ckm_talent_pipeline/delete_agent/' . $ag['id']); ?>" class="text-danger _delete"><i class="fa fa-trash"></i></a>
+                                                                        </td>
+                                                                    </tr>
+                                                                <?php } ?>
+                                                            <?php } else { ?>
+                                                                <tr><td colspan="6" class="text-center text-muted">No agencies configured. Direct submissions default to 0% commission.</td></tr>
+                                                            <?php } ?>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <!-- Automated IMAP Inbox Connection Setup -->
                                 <div class="row mbot20">
                                     <div class="col-md-12">
@@ -447,21 +609,6 @@
                                                         </div>
                                                     </div>
                                                 </div>
-
-                                                <div class="row mtop15">
-                                                    <div class="col-md-12 display-flex justify-between align-center">
-                                                        <div>
-                                                            <a href="<?php echo admin_url('ckm_talent_pipeline/poll_inbox'); ?>" class="btn btn-default btn-sm">
-                                                                <i class="fa fa-refresh"></i> Ingest Emails Now
-                                                            </a>
-                                                            <button type="button" class="btn btn-info btn-sm mleft5" id="btn_test_imap" onclick="test_imap_connection_ajax();">
-                                                                <i class="fa fa-plug"></i> Test Connection &amp; Count Messages
-                                                            </button>
-                                                        </div>
-                                                        <button type="submit" class="btn btn-primary"><i class="fa fa-save"></i> Save Settings</button>
-                                                    </div>
-                                                </div>
-                                                <?php echo form_close(); ?>
 
                                                  <hr class="mtop20 mbot15">
                                                  <div class="row">
@@ -618,5 +765,10 @@
 <?php include(__DIR__ . '/modals/potentials_tray_modal.php'); ?>
 <?php include(__DIR__ . '/modals/script_teleprompter_modal.php'); ?>
 <?php include(__DIR__ . '/modals/buyout_pitch_modal.php'); ?>
+<?php include(__DIR__ . '/modals/studio_tech_specs_modal.php'); ?>
+<?php include(__DIR__ . '/modals/ai_rider_modal.php'); ?>
+<?php include(__DIR__ . '/modals/file_namer_modal.php'); ?>
+<?php include(__DIR__ . '/modals/revisions_modal.php'); ?>
+<?php include(__DIR__ . '/modals/audition_nudge_modal.php'); ?>
 
 <?php init_tail(); ?>

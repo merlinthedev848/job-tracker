@@ -258,3 +258,34 @@
 
 .gap-5 { gap: 5px; }
 .gap-10 { gap: 10px; }
+
+/* Voice Actor Suite & Teleprompter HUD */
+.ckm-teleprompter-hud {
+    background: #0f172a;
+    border: 2px solid #334155;
+    border-radius: 8px;
+    color: #f8fafc;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.ckm-badge-recording {
+    background-color: #ef4444;
+    color: #fff;
+    animation: ckm-pulse 1.5s infinite;
+}
+
+@keyframes ckm-pulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.6; transform: scale(1.05); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+.ckm-revision-pill {
+    background: #fef3c7;
+    color: #92400e;
+    border: 1px solid #fcd34d;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 10px;
+}
+

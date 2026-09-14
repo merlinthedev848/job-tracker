@@ -32,13 +32,15 @@ class Ckm_talent_pipeline_model extends App_Model
         $table_categories  = db_prefix() . 'ckm_talent_categories';
         $table_sources     = db_prefix() . 'ckm_talent_sources';
         $table_loss        = db_prefix() . 'ckm_talent_loss_reasons';
+        $table_agents      = db_prefix() . 'ckm_talent_agents';
 
-        $this->db->select("$table_jobs.*, $table_clients.company as client_company, $table_categories.name as category_name, $table_categories.color as category_color, $table_sources.name as source_name, $table_loss.reason as loss_reason_name");
+        $this->db->select("$table_jobs.*, $table_clients.company as client_company, $table_categories.name as category_name, $table_categories.color as category_color, $table_sources.name as source_name, $table_loss.reason as loss_reason_name, $table_agents.name as agent_contact_name, $table_agents.agency_name as agent_rep_agency, $table_agents.commission_percent as agent_default_comm, (SELECT COUNT(id) FROM " . db_prefix() . "ckm_talent_job_revisions WHERE job_id = $table_jobs.id) as revisions_count");
         $this->db->from($table_jobs);
         $this->db->join($table_clients, "$table_clients.userid = $table_jobs.client_id", 'left');
         $this->db->join($table_categories, "$table_categories.id = $table_jobs.category_id", 'left');
         $this->db->join($table_sources, "$table_sources.id = $table_jobs.source_id", 'left');
         $this->db->join($table_loss, "$table_loss.id = $table_jobs.loss_reason_id", 'left');
+        $this->db->join($table_agents, "$table_agents.id = $table_jobs.agent_id", 'left');
 
         if (is_numeric($id)) {
             $this->db->where("$table_jobs.id", $id);
@@ -1093,5 +1095,351 @@ class Ckm_talent_pipeline_model extends App_Model
 
         $sample = $sample_castings[array_rand($sample_castings)];
         return $this->ingest_inbound_message($sample['from_name'], $sample['from_email'], $sample['subject'], $sample['body'], 'test_sim_' . time());
+    }
+
+    /**
+     * Create Native Perfex Estimate for a Job
+     */
+    public function create_perfex_estimate($job_id)
+    {
+        $this->load->model('estimates_model');
+        $job = $this->get($job_id);
+        if (!$job || empty($job->client_id)) {
+            return false;
+        }
+
+        $items = [];
+        $order = 1;
+        if ($job->bsf_amount > 0) {
+            $items[] = [
+                'order'            => $order++,
+                'description'      => 'Basic Session Fee (BSF) - ' . $job->job_title,
+                'long_description' => 'Role: ' . ($job->role_name ?: 'Voice Talent') . "\n" .
+                                      'Words: ' . ($job->word_count ?: 'N/A') . "\n" .
+                                      'Studio / Deliverable: ' . ($job->audio_specs ?: 'Broadcast WAV'),
+                'qty'              => 1,
+                'rate'             => $job->bsf_amount,
+                'unit'             => 'fee'
+            ];
+        }
+
+        if ($job->usage_amount > 0) {
+            $items[] = [
+                'order'            => $order++,
+                'description'      => 'Licensing & Usage Rights - ' . $job->job_title,
+                'long_description' => 'Media: ' . ($job->usage_medium ?: 'Specified Media') . "\n" .
+                                      'Territory: ' . ($job->usage_territory ?: 'National') . "\n" .
+                                      'Term: ' . ($job->usage_duration ?: '1 Year'),
+                'qty'              => 1,
+                'rate'             => $job->usage_amount,
+                'unit'             => 'buyout'
+            ];
+        }
+
+        if (empty($items)) {
+            $items[] = [
+                'order'            => 1,
+                'description'      => 'Voice Over Quote - ' . $job->job_title,
+                'long_description' => $job->role_name ?: '',
+                'qty'              => 1,
+                'rate'             => $job->total_amount,
+                'unit'             => ''
+            ];
+        }
+
+        $ai_rider_clause = $this->get_nava_rider_text($job_id);
+
+        $estimate_data = [
+            'clientid'              => $job->client_id,
+            'number'                => get_option('next_estimate_number'),
+            'date'                  => _d(date('Y-m-d')),
+            'expirydate'            => _d(date('Y-m-d', strtotime('+30 days'))),
+            'currency'              => get_base_currency()->id,
+            'subtotal'              => $job->total_amount,
+            'total'                 => $job->total_amount,
+            'adminnote'             => 'Estimate generated from CKM Talent Pipeline Job #' . $job->id,
+            'clientnote'            => "Thank you for the audition opportunity!\n\n" . (!empty($job->ai_rider_included) ? $ai_rider_clause : ''),
+            'terms'                 => get_option('predefined_terms_estimates'),
+            'newitems'              => $items
+        ];
+
+        $estimate_id = $this->estimates_model->add($estimate_data);
+        if ($estimate_id) {
+            $this->db->where('id', $job->id);
+            $this->db->update(db_prefix() . 'ckm_talent_jobs', ['perfex_estimate_id' => $estimate_id]);
+            return $estimate_id;
+        }
+        return false;
+    }
+
+    /**
+     * Get Pickups & Revisions for a Job
+     */
+    public function get_revisions($job_id)
+    {
+        $this->db->where('job_id', $job_id);
+        $this->db->order_by('round_number', 'asc');
+        $res = $this->db->get(db_prefix() . 'ckm_talent_job_revisions');
+        return $res ? $res->result_array() : [];
+    }
+
+    /**
+     * Add Pickup / Revision Round
+     */
+    public function add_revision($data)
+    {
+        $data['created_at'] = date('Y-m-d H:i:s');
+        if (empty($data['request_date'])) {
+            $data['request_date'] = date('Y-m-d');
+        }
+        $this->db->insert(db_prefix() . 'ckm_talent_job_revisions', $data);
+        $insert_id = $this->db->insert_id();
+
+        if (!empty($data['fee']) && (float)$data['fee'] > 0) {
+            $this->recalculate_job_financials($data['job_id']);
+        }
+        return $insert_id;
+    }
+
+    /**
+     * Update Revision Round
+     */
+    public function update_revision($id, $data)
+    {
+        $this->db->where('id', $id);
+        $this->db->update(db_prefix() . 'ckm_talent_job_revisions', $data);
+        if (isset($data['job_id'])) {
+            $this->recalculate_job_financials($data['job_id']);
+        }
+        return true;
+    }
+
+    /**
+     * Delete Revision Round
+     */
+    public function delete_revision($id)
+    {
+        $this->db->where('id', $id);
+        $rev = $this->db->get(db_prefix() . 'ckm_talent_job_revisions')->row();
+        if ($rev) {
+            $job_id = $rev->job_id;
+            $this->db->where('id', $id);
+            $this->db->delete(db_prefix() . 'ckm_talent_job_revisions');
+            $this->recalculate_job_financials($job_id);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Recalculate Job Total & Net with Pickups/Revisions
+     */
+    public function recalculate_job_financials($job_id)
+    {
+        $job = $this->get($job_id);
+        if (!$job) return;
+
+        $this->db->select_sum('fee', 'total_revision_fees');
+        $this->db->where('job_id', $job_id);
+        $rev_sum = $this->db->get(db_prefix() . 'ckm_talent_job_revisions')->row();
+        $revision_fees = ($rev_sum && $rev_sum->total_revision_fees) ? (float)$rev_sum->total_revision_fees : 0.00;
+
+        $bsf = (float)$job->bsf_amount;
+        $usage = (float)$job->usage_amount;
+        $total = $bsf + $usage + $revision_fees;
+        $commission_pct = (float)$job->commission_percent;
+        $commission_amount = ($total * $commission_pct) / 100;
+        $net = $total - $commission_amount;
+
+        $this->db->where('id', $job_id);
+        $this->db->update(db_prefix() . 'ckm_talent_jobs', [
+            'total_amount' => $total,
+            'net_amount'   => $net
+        ]);
+    }
+
+    /**
+     * Get Representing Agents Roster
+     */
+    public function get_agents($active_only = true)
+    {
+        if ($active_only) {
+            $this->db->where('is_active', 1);
+        }
+        $this->db->order_by('name', 'asc');
+        $res = $this->db->get(db_prefix() . 'ckm_talent_agents');
+        return $res ? $res->result_array() : [];
+    }
+
+    /**
+     * Get Single Agent
+     */
+    public function get_agent($id)
+    {
+        $this->db->where('id', $id);
+        return $this->db->get(db_prefix() . 'ckm_talent_agents')->row();
+    }
+
+    /**
+     * Save Agent (Create or Update)
+     */
+    public function save_agent($data, $id = '')
+    {
+        if (empty($id)) {
+            $data['created_at'] = date('Y-m-d H:i:s');
+            $this->db->insert(db_prefix() . 'ckm_talent_agents', $data);
+            return $this->db->insert_id();
+        } else {
+            $this->db->where('id', $id);
+            $this->db->update(db_prefix() . 'ckm_talent_agents', $data);
+            return $id;
+        }
+    }
+
+    /**
+     * Delete Agent
+     */
+    public function delete_agent($id)
+    {
+        $this->db->where('id', $id);
+        return $this->db->delete(db_prefix() . 'ckm_talent_agents');
+    }
+
+    /**
+     * Get Voice Actor Expenses
+     */
+    public function get_expenses($job_id = null)
+    {
+        if ($job_id) {
+            $this->db->where('job_id', $job_id);
+        }
+        $this->db->order_by('expense_date', 'desc');
+        $res = $this->db->get(db_prefix() . 'ckm_talent_expenses');
+        return $res ? $res->result_array() : [];
+    }
+
+    /**
+     * Save Expense
+     */
+    public function save_expense($data, $id = '')
+    {
+        if (empty($id)) {
+            $data['created_at'] = date('Y-m-d H:i:s');
+            $this->db->insert(db_prefix() . 'ckm_talent_expenses', $data);
+            return $this->db->insert_id();
+        } else {
+            $this->db->where('id', $id);
+            $this->db->update(db_prefix() . 'ckm_talent_expenses', $data);
+            return $id;
+        }
+    }
+
+    /**
+     * Delete Expense
+     */
+    public function delete_expense($id)
+    {
+        $this->db->where('id', $id);
+        return $this->db->delete(db_prefix() . 'ckm_talent_expenses');
+    }
+
+    /**
+     * Get Total & Tax-Deductible Expense Summary
+     */
+    public function get_expense_summary()
+    {
+        $this->db->select_sum('amount', 'total_expenses');
+        $total = $this->db->get(db_prefix() . 'ckm_talent_expenses')->row();
+
+        $this_year = date('Y-01-01');
+        $this->db->select_sum('amount', 'year_expenses');
+        $this->db->where('expense_date >=', $this_year);
+        $year = $this->db->get(db_prefix() . 'ckm_talent_expenses')->row();
+
+        return [
+            'total_expenses' => ($total && $total->total_expenses) ? (float)$total->total_expenses : 0.00,
+            'year_expenses'  => ($year && $year->year_expenses) ? (float)$year->year_expenses : 0.00
+        ];
+    }
+
+    /**
+     * Get NAVA AI & Synthetic Voice Protection Rider Text
+     */
+    public function get_nava_rider_text($job_id = null)
+    {
+        $actor_name = get_option('ckm_tp_actor_name') ?: (get_option('companyname') ?: 'Voice Talent');
+        
+        $rider = "--- SYNTHETIC VOICE & ARTIFICIAL INTELLIGENCE (AI) PROTECTION RIDER ---\n"
+               . "1. EXCLUSIVE PURPOSE: Client expressly agrees that all voice recordings, stems, and performances delivered by " . $actor_name . " are licensed solely and exclusively for the explicit project, medium, territory, and term specified in this agreement.\n"
+               . "2. PROHIBITION OF AI / MACHINE LEARNING TRAINING: Under no circumstances shall the audio, likeness, or vocal performance data be used to train, develop, fine-tune, simulate, or create Artificial Intelligence (AI), Machine Learning (ML), synthetic voices, digital replicas, text-to-speech (TTS) engines, or voice clones without separate, explicit, prior written consent and negotiated compensation.\n"
+               . "3. NAVA STANDARD COMPLIANCE: This clause incorporates the National Association of Voice Actors (NAVA) AI & Synthetic Voice Protection Standards.";
+
+        return $rider;
+    }
+
+    /**
+     * Generate Audition Follow-Up / Nudge Email
+     */
+    public function generate_audition_nudge_text($job_id)
+    {
+        $job = $this->get($job_id);
+        if (!$job) return '';
+
+        $recipient_name = !empty($job->client_company) ? $job->client_company : ($job->agent_name ?: 'Casting Director / Agent');
+        $project_title = $job->job_title;
+        $role_name = $job->role_name ?: 'Voice Over';
+
+        $text = "Hi " . $recipient_name . ",\n\n"
+              . "I hope you're having a great week!\n\n"
+              . "I wanted to quickly follow up on the audition submitted for \"" . $project_title . "\" (Role: " . $role_name . ").\n\n"
+              . "Please let me know if the client requires any alternate takes, adjusted pacing, or specific taglines. My broadcast home studio is ready for directed sessions (Source-Connect / Cleanfeed / Zoom) with same-day turnaround.\n\n"
+              . "Thank you for the opportunity, and I look forward to hearing how the project progresses!\n\n"
+              . "Best regards,\n"
+              . (get_option('ckm_tp_actor_name') ?: (get_option('companyname') ?: 'Voice Actor'));
+
+        return $text;
+    }
+
+    /**
+     * Export Take & Cue Sheet
+     */
+    public function export_take_sheet($job_id)
+    {
+        $job = $this->get($job_id);
+        if (!$job) return "No job found.";
+
+        $content = "========================================================\n";
+        $content .= "VOICE OVER RECORDING TAKE & CUE SHEET\n";
+        $content .= "========================================================\n";
+        $content .= "Project: " . $job->job_title . "\n";
+        $content .= "Role / Character: " . ($job->role_name ?: 'Lead') . "\n";
+        $content .= "Client: " . ($job->client_company ?: $job->agent_name) . "\n";
+        $content .= "Date: " . date('Y-m-d H:i') . "\n";
+        $content .= "Studio Specs: " . ($job->audio_specs ?: '48kHz / 24-bit WAV') . "\n";
+        $content .= "Actor: " . (get_option('ckm_tp_actor_name') ?: 'Voice Talent') . "\n";
+        $content .= "========================================================\n\n";
+
+        $content .= "RECORDING SCRIPT & DIRECTION:\n";
+        $content .= "--------------------------------------------------------\n";
+        $content .= ($job->script_text ?: "No script text recorded.") . "\n\n";
+
+        $content .= "TAKE LOG & DIRECTOR NOTES:\n";
+        $content .= "--------------------------------------------------------\n";
+        $content .= ($job->take_notes ?: "Take 1: Master Full Read - Clean\nTake 2: Alternate Pacing / Energetic\nTake 3: Wild Lines & Tags") . "\n\n";
+
+        $revisions = $this->get_revisions($job_id);
+        if (!empty($revisions)) {
+            $content .= "PICKUP / REVISION HISTORY:\n";
+            $content .= "--------------------------------------------------------\n";
+            foreach ($revisions as $rev) {
+                $content .= "Round #" . $rev['round_number'] . " [" . $rev['status'] . "] - Date: " . $rev['request_date'] . "\n";
+                $content .= "Type: " . $rev['revision_type'] . " | Fee: " . ckm_format_money($rev['fee']) . "\n";
+                if (!empty($rev['timecodes'])) $content .= "Timecodes: " . $rev['timecodes'] . "\n";
+                if (!empty($rev['notes'])) $content .= "Notes: " . $rev['notes'] . "\n";
+                $content .= "--------------------------------------------------------\n";
+            }
+        }
+
+        return $content;
     }
 }

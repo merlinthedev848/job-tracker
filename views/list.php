@@ -41,6 +41,11 @@
                         <td><?php echo htmlspecialchars($job['source_name'] ?: '-'); ?></td>
                         <td>
                             <?php echo htmlspecialchars($job['role_name'] ?: ''); ?>
+                            <?php if (!empty($job['revisions_count']) && $job['revisions_count'] > 0) { ?>
+                                <span class="badge bg-warning text-dark mleft5" style="cursor: pointer;" onclick="open_revisions_modal(<?php echo $job['id']; ?>, '<?php echo htmlspecialchars(addslashes($job['job_title'])); ?>');" title="Pickup Rounds">
+                                    <i class="fa fa-refresh"></i> <?php echo $job['revisions_count']; ?>
+                                </span>
+                            <?php } ?>
                             <?php if (!empty($job['audio_specs'])) { ?>
                                 <small class="text-muted block font-xs"><?php echo htmlspecialchars($job['audio_specs']); ?></small>
                             <?php } ?>
@@ -57,28 +62,39 @@
                                 <a href="<?php echo admin_url('invoices/invoice/' . $job['perfex_invoice_id']); ?>" class="label label-success">
                                     #<?php echo $job['perfex_invoice_id']; ?>
                                 </a>
-                        <?php } else { ?>
-                            <span class="text-muted font-xs">No</span>
-                        <?php } ?>
-                    </td>
-                    <td>
-                        <div class="btn-group">
-                            <button class="btn btn-default btn-xs" onclick="edit_talent_job(<?php echo $job['id']; ?>); return false;" title="<?php echo _l('edit'); ?>">
-                                <i class="fa fa-pencil"></i>
-                            </button>
-                            <a href="<?php echo admin_url('ckm_talent_pipeline/duplicate/' . $job['id']); ?>" class="btn btn-default btn-xs" title="Duplicate / Repeat Booking">
-                                <i class="fa fa-clone text-info"></i>
-                            </a>
-                            <?php if (empty($job['perfex_invoice_id']) && !in_array($job['status'], ['lost'])) { ?>
-                                <a href="<?php echo admin_url('ckm_talent_pipeline/convert_to_invoice/' . $job['id']); ?>" class="btn btn-success btn-xs" title="<?php echo _l('ckm_tp_convert_to_invoice'); ?>">
-                                    <i class="fa fa-file-text-o"></i>
-                                </a>
+                            <?php } else { ?>
+                                <span class="text-muted font-xs">No</span>
                             <?php } ?>
-                            <a href="<?php echo admin_url('ckm_talent_pipeline/delete/' . $job['id']); ?>" class="btn btn-danger btn-xs _delete" title="<?php echo _l('delete'); ?>">
-                                <i class="fa fa-trash"></i>
-                            </a>
-                        </div>
-                    </td>
+                        </td>
+                        <td>
+                            <div class="btn-group">
+                                <button class="btn btn-default btn-xs" onclick="open_teleprompter_for_job(<?php echo $job['id']; ?>, '<?php echo htmlspecialchars(addslashes($job['job_title'])); ?>', <?php echo json_encode($job['script_text'] ?? $job['notes'] ?? ''); ?>, <?php echo json_encode($job['take_notes'] ?? ''); ?>);" title="Teleprompter & Take Timer">
+                                    <i class="fa fa-microphone text-primary"></i>
+                                </button>
+                                <button class="btn btn-default btn-xs" onclick="open_revisions_modal(<?php echo $job['id']; ?>, '<?php echo htmlspecialchars(addslashes($job['job_title'])); ?>');" title="Pickups & Revisions">
+                                    <i class="fa fa-refresh text-warning"></i>
+                                </button>
+                                <button class="btn btn-default btn-xs" onclick="edit_talent_job(<?php echo $job['id']; ?>); return false;" title="<?php echo _l('edit'); ?>">
+                                    <i class="fa fa-pencil"></i>
+                                </button>
+                                <a href="<?php echo admin_url('ckm_talent_pipeline/duplicate/' . $job['id']); ?>" class="btn btn-default btn-xs" title="Duplicate / Repeat Booking">
+                                    <i class="fa fa-clone text-info"></i>
+                                </a>
+                                <?php if (empty($job['perfex_estimate_id']) && !empty($job['client_id'])) { ?>
+                                    <a href="<?php echo admin_url('ckm_talent_pipeline/convert_to_estimate/' . $job['id']); ?>" class="btn btn-default btn-xs" title="Create Perfex Quote / Estimate">
+                                        <i class="fa fa-file-pdf-o text-primary"></i>
+                                    </a>
+                                <?php } ?>
+                                <?php if (empty($job['perfex_invoice_id']) && !in_array($job['status'], ['lost']) && !empty($job['client_id'])) { ?>
+                                    <a href="<?php echo admin_url('ckm_talent_pipeline/convert_to_invoice/' . $job['id']); ?>" class="btn btn-success btn-xs" title="<?php echo _l('ckm_tp_convert_to_invoice'); ?>">
+                                        <i class="fa fa-file-text-o"></i>
+                                    </a>
+                                <?php } ?>
+                                <a href="<?php echo admin_url('ckm_talent_pipeline/delete/' . $job['id']); ?>" class="btn btn-danger btn-xs _delete" title="<?php echo _l('delete'); ?>">
+                                    <i class="fa fa-trash"></i>
+                                </a>
+                            </div>
+                        </td>
                 </tr>
             <?php } ?>
         <?php } ?>
