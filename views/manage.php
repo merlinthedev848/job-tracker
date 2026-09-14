@@ -3,155 +3,74 @@
 
 <div id="wrapper">
     <div class="content">
-        <!-- Inbound Potentials Alert Banner (if any pending) -->
-        <?php if (!empty($potentials)) { ?>
-            <div class="row mbot15">
-                <div class="col-md-12">
-                    <div class="alert alert-success display-flex justify-between align-center p12 mbot0 ckm-potentials-banner">
-                        <div class="display-flex align-center">
-                            <span class="badge bg-warning font-medium p8 mright10"><i class="fa fa-envelope-open"></i> <?php echo count($potentials); ?></span>
-                            <div>
-                                <h4 class="bold mtop0 mbot5 text-dark">
-                                    <?php echo count($potentials); ?> New Inbound Casting Opportunity(s) Detected!
-                                </h4>
-                                <span class="font-xs text-muted">The inbox monitor has parsed new audition breakdowns ready for your review.</span>
-                            </div>
-                        </div>
-                        <div>
-                            <button type="button" class="btn btn-success bold" onclick="$('#potentials_tray_modal').modal('show');">
-                                <i class="fa fa-bolt"></i> Review & Accept Potentials
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        <?php } ?>
-
-        <!-- Monthly Revenue & Goal Tracker Banner -->
-        <div class="row mbot15">
-            <div class="col-md-12">
-                <div class="panel_s mbot0 ckm-goal-tracker-card">
-                    <div class="panel-body p15">
-                        <div class="row align-center display-flex flex-wrap">
-                            <div class="col-md-3">
-                                <span class="text-uppercase font-xs bold text-muted block">This Month's Earnings</span>
-                                <h3 class="bold text-success mtop5 mbot0">
-                                    <?php echo ckm_format_money($summary['month_net_revenue']); ?>
-                                    <small class="font-xs text-muted">/ <?php echo ckm_format_money($summary['monthly_goal']); ?> goal</small>
-                                </h3>
-                            </div>
-                            <div class="col-md-5">
-                                <div class="display-flex justify-between font-xs bold mbot5">
-                                    <span>Goal Progress</span>
-                                    <span class="text-primary"><?php echo $summary['goal_percent']; ?>%</span>
-                                </div>
-                                <div class="progress mbot0" style="height: 12px;">
-                                    <div class="progress-bar progress-bar-success progress-bar-striped" role="progressbar" style="width: <?php echo $summary['goal_percent']; ?>%;"></div>
-                                </div>
-                            </div>
-                            <div class="col-md-3 text-center">
-                                <span class="badge bg-info p8 font-xs" title="Calculated from your historical booking % and average deal size">
-                                    <i class="fa fa-bullseye"></i> ~<?php echo $summary['needed_auditions']; ?> auditions needed to hit goal
-                                </span>
-                            </div>
-                            <div class="col-md-1 text-right">
-                                <button type="button" class="btn btn-default btn-xs" onclick="$('#goal_modal').modal('show');" title="Edit Monthly Goal">
-                                    <i class="fa fa-pencil"></i> Goal
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Directed Sessions Today / Upcoming Banner (if any) -->
+        <!-- Sleek Directed Sessions Strip (Only if there are upcoming directed sessions today) -->
         <?php if (!empty($upcoming_sessions)) { ?>
-            <div class="row mbot15">
-                <div class="col-md-12">
-                    <div class="alert alert-info display-flex justify-between align-center p10 mbot0">
-                        <div>
-                            <i class="fa fa-bolt font-medium mright5"></i>
-                            <strong>Upcoming Directed Sessions:</strong>
-                            <?php foreach (array_slice($upcoming_sessions, 0, 3) as $sess) { ?>
-                                <span class="badge bg-primary mleft5">
-                                    <?php echo date('D, j M H:i', strtotime($sess['session_datetime'])); ?>: 
-                                    <?php echo htmlspecialchars($sess['job_title']); ?> (<?php echo htmlspecialchars($sess['direction_type']); ?>)
-                                    <?php if (!empty($sess['direction_link'])) { ?>
-                                        <a href="<?php echo htmlspecialchars($sess['direction_link']); ?>" target="_blank" class="text-white"><i class="fa fa-external-link"></i></a>
-                                    <?php } ?>
-                                </span>
+            <div class="alert alert-info display-flex justify-between align-center p10 mbot15" style="border-left: 4px solid #0288d1;">
+                <div>
+                    <i class="fa fa-bolt text-warning font-medium mright5"></i>
+                    <strong>Upcoming Directed Sessions:</strong>
+                    <?php foreach (array_slice($upcoming_sessions, 0, 3) as $sess) { ?>
+                        <span class="badge bg-primary mleft5">
+                            <?php echo date('D, j M H:i', strtotime($sess['session_datetime'])); ?>: 
+                            <?php echo htmlspecialchars($sess['job_title']); ?> (<?php echo htmlspecialchars($sess['direction_type']); ?>)
+                            <?php if (!empty($sess['direction_link'])) { ?>
+                                <a href="<?php echo htmlspecialchars($sess['direction_link']); ?>" target="_blank" class="text-white"><i class="fa fa-external-link"></i></a>
                             <?php } ?>
-                        </div>
-                    </div>
+                        </span>
+                    <?php } ?>
                 </div>
             </div>
         <?php } ?>
-
-        <!-- Top Metrics Row -->
-        <div class="row mbot15">
-            <div class="col-md-3">
-                <div class="top_stats_wrapper">
-                    <p class="text-uppercase mtop5"><i class="fa fa-microphone text-info"></i> All-Time Auditions</p>
-                    <p class="text-muted bold font-medium-xs"><?php echo $summary['total_auditions']; ?></p>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="top_stats_wrapper">
-                    <p class="text-uppercase mtop5"><i class="fa fa-bullseye text-success"></i> Audition-to-Booking %</p>
-                    <p class="text-success bold font-medium-xs"><?php echo $summary['conversion_rate']; ?>%</p>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="top_stats_wrapper">
-                    <p class="text-uppercase mtop5"><i class="fa fa-hourglass-half text-warning"></i> Active Pipeline Value</p>
-                    <p class="text-warning bold font-medium-xs"><?php echo ckm_format_money($summary['pipeline_value']); ?></p>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="top_stats_wrapper">
-                    <p class="text-uppercase mtop5"><i class="fa fa-trophy text-primary"></i> Net Lifetime Earnings</p>
-                    <p class="text-primary bold font-medium-xs"><?php echo ckm_format_money($summary['net_revenue']); ?></p>
-                </div>
-            </div>
-        </div>
 
         <!-- Main Tabbed Panel -->
         <div class="row">
             <div class="col-md-12">
                 <div class="panel_s">
-                    <div class="panel-body">
-                        <!-- Navigation Tabs -->
-                        <ul class="nav nav-tabs mbot20" role="tablist">
-                            <li role="presentation" class="active">
-                                <a href="#tab_pipeline" aria-controls="tab_pipeline" role="tab" data-toggle="tab">
-                                    <i class="fa fa-microphone"></i> <strong>Jobs & Audition Pipeline</strong>
-                                </a>
-                            </li>
-                            <li role="presentation">
-                                <a href="#tab_analytics" aria-controls="tab_analytics" role="tab" data-toggle="tab">
-                                    <i class="fa fa-bar-chart"></i> <strong>Win/Loss & Analytics</strong>
-                                </a>
-                            </li>
-                            <li role="presentation">
-                                <a href="#tab_buyouts" aria-controls="tab_buyouts" role="tab" data-toggle="tab">
-                                    <i class="fa fa-copyright"></i> <strong>Expiring Buyouts Radar</strong>
-                                    <?php if (!empty($expiring_licenses)) { ?>
-                                        <span class="badge bg-warning"><?php echo count($expiring_licenses); ?></span>
-                                    <?php } ?>
-                                </a>
-                            </li>
-                            <li role="presentation">
-                                <a href="#tab_crm" aria-controls="tab_crm" role="tab" data-toggle="tab">
-                                    <i class="fa fa-cogs"></i> <strong>Settings & Mailbox Monitor</strong>
-                                </a>
-                            </li>
-                        </ul>
+                    <div class="panel-body p15">
+                        <!-- Top Header & Modern Navigation Tabs -->
+                        <div class="display-flex justify-between align-center flex-wrap mbot15 pb10 border-bottom">
+                            <div>
+                                <h4 class="bold mtop0 mbot0 text-dark">
+                                    <i class="fa fa-microphone text-primary"></i> Voice Over & Talent Hub
+                                </h4>
+                                <span class="text-muted font-xs">
+                                    Pipeline: <strong class="text-warning"><?php echo ckm_format_money($summary['pipeline_value']); ?></strong> &bull; 
+                                    This Month: <strong class="text-success"><?php echo ckm_format_money($summary['month_net_revenue']); ?></strong> / <?php echo ckm_format_money($summary['monthly_goal']); ?> &bull; 
+                                    Win Rate: <strong class="text-primary"><?php echo $summary['conversion_rate']; ?>%</strong>
+                                </span>
+                            </div>
+
+                            <ul class="nav nav-pills" role="tablist">
+                                <li role="presentation" class="active">
+                                    <a href="#tab_pipeline" aria-controls="tab_pipeline" role="tab" data-toggle="tab">
+                                        <i class="fa fa-th-large"></i> <strong>Pipeline Board</strong>
+                                    </a>
+                                </li>
+                                <li role="presentation">
+                                    <a href="#tab_analytics" aria-controls="tab_analytics" role="tab" data-toggle="tab">
+                                        <i class="fa fa-bar-chart"></i> <strong>Goals & Analytics</strong>
+                                    </a>
+                                </li>
+                                <li role="presentation">
+                                    <a href="#tab_buyouts" aria-controls="tab_buyouts" role="tab" data-toggle="tab">
+                                        <i class="fa fa-copyright"></i> <strong>Buyouts Radar</strong>
+                                        <?php if (!empty($expiring_licenses)) { ?>
+                                            <span class="badge bg-warning"><?php echo count($expiring_licenses); ?></span>
+                                        <?php } ?>
+                                    </a>
+                                </li>
+                                <li role="presentation">
+                                    <a href="#tab_crm" aria-controls="tab_crm" role="tab" data-toggle="tab">
+                                        <i class="fa fa-cogs"></i> <strong>Mailbox & Settings</strong>
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
 
                         <div class="tab-content">
                             <!-- TAB 1: PIPELINE BOARD -->
                             <div role="tabpanel" class="tab-pane active" id="tab_pipeline">
-                                <div class="ckm-command-bar mbot20">
+                                <div class="ckm-command-bar mbot15">
                                     <div class="display-flex align-center flex-wrap gap-10">
                                         <button type="button" class="btn btn-primary" onclick="new_talent_job();">
                                             <i class="fa fa-plus"></i> <?php echo _l('ckm_tp_new_job'); ?>
@@ -212,8 +131,70 @@
                                 <?php } ?>
                             </div>
 
-                            <!-- TAB 2: ANALYTICS & REPORTS -->
+                            <!-- TAB 2: GOALS & ANALYTICS -->
                             <div role="tabpanel" class="tab-pane" id="tab_analytics">
+                                <!-- Monthly Revenue Goal Pace Banner -->
+                                <div class="panel_s mbot20 ckm-goal-tracker-card">
+                                    <div class="panel-body p15">
+                                        <div class="row align-center display-flex flex-wrap">
+                                            <div class="col-md-3">
+                                                <span class="text-uppercase font-xs bold text-muted block">This Month's Earnings</span>
+                                                <h3 class="bold text-success mtop5 mbot0">
+                                                    <?php echo ckm_format_money($summary['month_net_revenue']); ?>
+                                                    <small class="font-xs text-muted">/ <?php echo ckm_format_money($summary['monthly_goal']); ?> goal</small>
+                                                </h3>
+                                            </div>
+                                            <div class="col-md-5">
+                                                <div class="display-flex justify-between font-xs bold mbot5">
+                                                    <span>Goal Progress</span>
+                                                    <span class="text-primary"><?php echo $summary['goal_percent']; ?>%</span>
+                                                </div>
+                                                <div class="progress mbot0" style="height: 12px;">
+                                                    <div class="progress-bar progress-bar-success progress-bar-striped" role="progressbar" style="width: <?php echo $summary['goal_percent']; ?>%;"></div>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3 text-center">
+                                                <span class="badge bg-info p8 font-xs" title="Calculated from your historical booking % and average deal size">
+                                                    <i class="fa fa-bullseye"></i> ~<?php echo $summary['needed_auditions']; ?> auditions needed to hit goal
+                                                </span>
+                                            </div>
+                                            <div class="col-md-1 text-right">
+                                                <button type="button" class="btn btn-default btn-xs" onclick="$('#goal_modal').modal('show');" title="Edit Monthly Goal">
+                                                    <i class="fa fa-pencil"></i> Goal
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Top Metrics Summary Row -->
+                                <div class="row mbot20">
+                                    <div class="col-md-3">
+                                        <div class="top_stats_wrapper text-center p15 bg-light border">
+                                            <p class="text-uppercase font-xs text-muted mtop0 mbot5"><i class="fa fa-microphone text-info"></i> All-Time Auditions</p>
+                                            <p class="text-dark bold font-medium-xs mbot0"><?php echo $summary['total_auditions']; ?></p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="top_stats_wrapper text-center p15 bg-light border">
+                                            <p class="text-uppercase font-xs text-muted mtop0 mbot5"><i class="fa fa-bullseye text-success"></i> Audition-to-Booking %</p>
+                                            <p class="text-success bold font-medium-xs mbot0"><?php echo $summary['conversion_rate']; ?>%</p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="top_stats_wrapper text-center p15 bg-light border">
+                                            <p class="text-uppercase font-xs text-muted mtop0 mbot5"><i class="fa fa-hourglass-half text-warning"></i> Active Pipeline Value</p>
+                                            <p class="text-warning bold font-medium-xs mbot0"><?php echo ckm_format_money($summary['pipeline_value']); ?></p>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="top_stats_wrapper text-center p15 bg-light border">
+                                            <p class="text-uppercase font-xs text-muted mtop0 mbot5"><i class="fa fa-trophy text-primary"></i> Net Lifetime Earnings</p>
+                                            <p class="text-primary bold font-medium-xs mbot0"><?php echo ckm_format_money($summary['net_revenue']); ?></p>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="row">
                                     <div class="col-md-7">
                                         <div class="panel panel-default">

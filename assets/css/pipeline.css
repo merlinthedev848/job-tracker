@@ -1,5 +1,23 @@
 /* CKM Talent Pipeline Modern Styles */
 
+.nav-pills > li > a {
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 13px;
+    color: #475569;
+    background: #f1f5f9;
+    margin-left: 4px;
+    transition: all 0.2s ease;
+}
+
+.nav-pills > li.active > a,
+.nav-pills > li.active > a:focus,
+.nav-pills > li.active > a:hover {
+    background-color: #0288d1;
+    color: #fff;
+    font-weight: 600;
+}
+
 .ckm-goal-tracker-card {
     background: #ffffff;
     border-radius: 8px;
@@ -12,17 +30,18 @@
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 10px;
 }
 
 .ckm-live-search-box {
     position: relative;
-    width: 260px;
+    width: 250px;
 }
 
 .ckm-live-search-box .form-control {
     padding-left: 30px;
     border-radius: 20px;
+    height: 34px;
 }
 
 .ckm-search-icon {
@@ -33,23 +52,23 @@
 }
 
 .ckm-filter-pills-bar {
-    padding: 8px 12px;
+    padding: 6px 10px;
     background: #f8fafc;
     border-radius: 6px;
     border: 1px solid #e2e8f0;
 }
 
 .ckm-genre-filter-btn {
-    border-radius: 15px;
-    padding: 3px 10px;
+    border-radius: 14px;
+    padding: 2px 9px;
     font-size: 11px;
     transition: all 0.2s ease;
 }
 
 .ckm-genre-filter-btn.active {
-    background-color: #2563eb !important;
+    background-color: #0288d1 !important;
     color: #fff !important;
-    border-color: #2563eb !important;
+    border-color: #0288d1 !important;
 }
 
 /* Kanban Board */

@@ -126,22 +126,27 @@ if (!empty($jobs)) {
                                 </div>
 
                                 <!-- Role, Word Count & Audio Take -->
-                                <div class="font-xs mbot8 text-dark display-flex justify-between align-center flex-wrap">
-                                    <div>
-                                        <?php if (!empty($job['role_name'])) { ?>
-                                            <strong>Role:</strong> <?php echo htmlspecialchars($job['role_name']); ?>
-                                        <?php } ?>
-                                        <?php if (!empty($job['word_count'])) { ?>
-                                            <span class="label label-default mleft5"><?php echo number_format($job['word_count']); ?>w</span>
+                                <?php 
+                                $is_custom_role = !empty($job['role_name']) && !in_array(strtolower(trim($job['role_name'])), ['voice talent / performer', 'voice talent', 'performer']);
+                                ?>
+                                <?php if ($is_custom_role || !empty($job['word_count']) || !empty($job['audio_link'])) { ?>
+                                    <div class="font-xs mbot8 text-dark display-flex justify-between align-center flex-wrap">
+                                        <div>
+                                            <?php if ($is_custom_role) { ?>
+                                                <span class="label label-info"><i class="fa fa-user-o"></i> <?php echo htmlspecialchars($job['role_name']); ?></span>
+                                            <?php } ?>
+                                            <?php if (!empty($job['word_count'])) { ?>
+                                                <span class="label label-default mleft5"><?php echo number_format($job['word_count']); ?>w</span>
+                                            <?php } ?>
+                                        </div>
+
+                                        <?php if (!empty($job['audio_link'])) { ?>
+                                            <a href="<?php echo htmlspecialchars($job['audio_link']); ?>" target="_blank" class="btn btn-xs btn-info" title="Play Audition Take / Audio File">
+                                                <i class="fa fa-play-circle"></i> Audio
+                                            </a>
                                         <?php } ?>
                                     </div>
-
-                                    <?php if (!empty($job['audio_link'])) { ?>
-                                        <a href="<?php echo htmlspecialchars($job['audio_link']); ?>" target="_blank" class="btn btn-xs btn-info" title="Play Audition Take / Audio File">
-                                            <i class="fa fa-play-circle"></i> Audio
-                                        </a>
-                                    <?php } ?>
-                                </div>
+                                <?php } ?>
 
                                 <!-- Directed Session Badge -->
                                 <?php if (!empty($job['direction_type']) && $job['direction_type'] != 'Self-Record') { ?>
@@ -187,20 +192,24 @@ if (!empty($jobs)) {
                                 <!-- Card Footer: Rate & Invoicing Status -->
                                 <div class="ckm-card-footer display-flex justify-between align-center mtop10 ptop8">
                                     <div>
-                                        <span class="bold text-success font-medium">
-                                            <?php echo ckm_format_money($job['total_amount']); ?>
-                                        </span>
-                                        <?php if ($job['commission_percent'] > 0) { ?>
-                                            <small class="text-muted block font-xs">
-                                                Net: <?php echo ckm_format_money($job['net_amount']); ?> (-<?php echo $job['commission_percent']; ?>%)
-                                            </small>
+                                        <?php if ($job['total_amount'] > 0) { ?>
+                                            <span class="bold text-success font-medium">
+                                                <?php echo ckm_format_money($job['total_amount']); ?>
+                                            </span>
+                                            <?php if ($job['commission_percent'] > 0) { ?>
+                                                <small class="text-muted block font-xs">
+                                                    Net: <?php echo ckm_format_money($job['net_amount']); ?> (-<?php echo $job['commission_percent']; ?>%)
+                                                </small>
+                                            <?php } ?>
+                                        <?php } else { ?>
+                                            <span class="text-muted font-xs italic">Fee: TBD</span>
                                         <?php } ?>
                                     </div>
 
                                     <div>
                                         <?php if (!empty($job['perfex_invoice_id'])) { ?>
                                             <span class="label label-success"><i class="fa fa-check"></i> Invoiced</span>
-                                        <?php } elseif (in_array($job['status'], ['won', 'completed'])) { ?>
+                                        <?php } elseif (in_array($job['status'], ['won', 'completed']) && $job['total_amount'] > 0) { ?>
                                             <a href="<?php echo admin_url('ckm_talent_pipeline/convert_to_invoice/' . $job['id']); ?>" class="btn btn-success btn-xs" title="Convert to Invoice">
                                                 <i class="fa fa-file-text-o"></i> Bill
                                             </a>
