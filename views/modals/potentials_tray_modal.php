@@ -2,7 +2,7 @@
 
 <!-- Inbound Potentials Triage Modal -->
 <div class="modal fade" id="potentials_tray_modal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document" style="width: 90%; max-width: 1100px;">
+    <div class="modal-dialog modal-lg" role="document" style="width: 92%; max-width: 1200px;">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
@@ -10,49 +10,91 @@
                     <h4 class="modal-title text-white">
                         <i class="fa fa-envelope-open-o"></i> <strong>Inbound Casting Calls & Opportunities Queue</strong>
                     </h4>
-                    <a href="<?php echo admin_url('ckm_talent_pipeline/poll_inbox'); ?>" class="btn btn-xs btn-default font-xs">
-                        <i class="fa fa-refresh"></i> Check Inbox Now
-                    </a>
+                    <div>
+                        <a href="<?php echo admin_url('ckm_talent_pipeline/purge_spam_potentials'); ?>" class="btn btn-xs btn-warning font-xs mright5" title="Purge auto-replies, out-of-office, bounces and newsletter blasts">
+                            <i class="fa fa-magic"></i> Purge Auto-Replies & Newsletters
+                        </a>
+                        <a href="<?php echo admin_url('ckm_talent_pipeline/clear_all_potentials'); ?>" class="btn btn-xs btn-danger font-xs _delete mright5" title="Dismiss all items currently in queue">
+                            <i class="fa fa-trash"></i> Clear All
+                        </a>
+                        <a href="<?php echo admin_url('ckm_talent_pipeline/poll_inbox'); ?>" class="btn btn-xs btn-default font-xs">
+                            <i class="fa fa-refresh"></i> Check Inbox Now
+                        </a>
+                    </div>
                 </div>
             </div>
             <div class="modal-body p20">
                 <?php if (!empty($potentials)) { ?>
                     <p class="text-muted font-xs mbot15">
-                        The email monitor has automatically detected and parsed the following casting opportunities from your inbox. Review the extracted fields and accept them directly into your pipeline.
+                        The email monitor has automatically detected incoming inquiries from your mailbox. Review the extracted fields, quote with 1-click, or convert verified castings directly into active pipeline jobs.
                     </p>
+
+                    <?php echo form_open(admin_url('ckm_talent_pipeline/bulk_potentials'), ['id' => 'bulk_potentials_form']); ?>
+                    <div class="display-flex justify-between align-center mbot10">
+                        <div class="display-flex align-center">
+                            <select name="bulk_action" class="form-control input-sm mright10" style="width: 170px;">
+                                <option value="">-- Bulk Action --</option>
+                                <option value="accept">Accept Selected</option>
+                                <option value="dismiss">Dismiss Selected</option>
+                            </select>
+                            <button type="submit" class="btn btn-default btn-sm">Apply</button>
+                        </div>
+                        <span class="text-muted font-xs">Showing <?php echo count($potentials); ?> pending inquiry(ies)</span>
+                    </div>
 
                     <div class="table-responsive">
                         <table class="table table-bordered table-hover">
                             <thead>
                                 <tr class="active">
+                                    <th width="30" class="text-center"><input type="checkbox" id="select_all_potentials" onclick="$('.pot-checkbox').prop('checked', this.checked);"></th>
                                     <th>Received</th>
                                     <th>Sender</th>
                                     <th>Project Title</th>
                                     <th>Role</th>
                                     <th>Word Count</th>
                                     <th>Estimated Rates</th>
-                                    <th>Actions</th>
+                                    <th width="150">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ($potentials as $pot) { ?>
-                                    <tr>
+                                <?php 
+                                $CI = &get_instance();
+                                foreach ($potentials as $pot) { 
+                                    $is_suspect = $CI->ckm_talent_pipeline_model->is_spam_or_autoreply($pot['from_name'], $pot['from_email'], $pot['subject'], $pot['raw_body']);
+                                ?>
+                                    <tr class="<?php echo $is_suspect ? 'bg-warning-light' : ''; ?>">
+                                        <td class="text-center">
+                                            <input type="checkbox" name="potential_ids[]" value="<?php echo $pot['id']; ?>" class="pot-checkbox">
+                                        </td>
                                         <td class="font-xs"><?php echo date('j M, H:i', strtotime($pot['created_at'])); ?></td>
                                         <td>
                                             <strong><?php echo htmlspecialchars($pot['from_name'] ?: 'Unknown Sender'); ?></strong>
                                             <small class="text-muted block font-xs"><?php echo htmlspecialchars($pot['from_email']); ?></small>
+                                            <?php if ($is_suspect) { ?>
+                                                <span class="label label-warning font-xs mtop5 inline-block"><i class="fa fa-exclamation-triangle"></i> Auto-Reply / Newsletter</span>
+                                            <?php } ?>
                                         </td>
                                         <td class="bold text-primary">
                                             <?php echo htmlspecialchars($pot['parsed_title'] ?: $pot['subject']); ?>
                                         </td>
-                                        <td><span class="label label-info"><?php echo htmlspecialchars($pot['parsed_role']); ?></span></td>
+                                        <td>
+                                            <?php if (!empty($pot['parsed_role'])) { ?>
+                                                <span class="label label-info"><?php echo htmlspecialchars($pot['parsed_role']); ?></span>
+                                            <?php } else { ?>
+                                                <span class="text-muted font-xs">-</span>
+                                            <?php } ?>
+                                        </td>
                                         <td><?php echo $pot['parsed_words'] > 0 ? number_format($pot['parsed_words']) . 'w' : '-'; ?></td>
                                         <td>
-                                            <span class="bold text-success font-xs">
-                                                BSF: <?php echo ckm_format_money($pot['parsed_bsf']); ?>
-                                            </span>
+                                            <?php if ($pot['parsed_bsf'] > 0) { ?>
+                                                <span class="bold text-success font-xs">
+                                                    BSF: <?php echo ckm_format_money($pot['parsed_bsf']); ?>
+                                                </span>
+                                            <?php } else { ?>
+                                                <span class="text-muted font-xs">BSF: TBD</span>
+                                            <?php } ?>
                                             <?php if ($pot['parsed_usage'] > 0) { ?>
-                                                <small class="text-muted block font-xs">Usage: <?php echo ckm_format_money($pot['parsed_usage']); ?></small>
+                                                <small class="text-muted block font-xs bold">Usage: <?php echo ckm_format_money($pot['parsed_usage']); ?></small>
                                             <?php } ?>
                                         </td>
                                         <td>
@@ -71,10 +113,10 @@
                                     </tr>
                                     <!-- Email Raw Snippet Drawer -->
                                     <tr class="bg-light">
-                                        <td colspan="7" class="font-xs p10" style="background: #f8fafc;">
+                                        <td colspan="8" class="font-xs p10" style="background: #f8fafc;">
                                             <details>
                                                 <summary class="text-primary bold cursor-pointer"><i class="fa fa-eye"></i> View Original Email Snippet & Script Notes</summary>
-                                                <pre class="mtop5 p10 font-xs bg-white border" style="white-space: pre-wrap;"><?php echo htmlspecialchars($pot['raw_body']); ?></pre>
+                                                <pre class="mtop5 p10 font-xs bg-white border" style="white-space: pre-wrap; max-height: 200px; overflow-y: auto;"><?php echo htmlspecialchars($pot['raw_body']); ?></pre>
                                             </details>
                                         </td>
                                     </tr>
@@ -82,6 +124,7 @@
                             </tbody>
                         </table>
                     </div>
+                    <?php echo form_close(); ?>
                 <?php } else { ?>
                     <div class="text-center p30">
                         <i class="fa fa-check-circle-o text-success font-large" style="font-size: 48px;"></i>

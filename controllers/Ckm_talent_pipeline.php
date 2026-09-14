@@ -80,6 +80,62 @@ class Ckm_talent_pipeline extends AdminController
     }
 
     /**
+     * 1-Click Purge of Auto-Replies, Bounces & Newsletters
+     */
+    public function purge_spam_potentials()
+    {
+        if (!has_permission('ckm_talent_pipeline', '', 'delete') && !is_admin()) {
+            access_denied('ckm_talent_pipeline');
+        }
+
+        $count = $this->ckm_talent_pipeline_model->purge_spam_potentials();
+        set_alert('success', 'Purged ' . $count . ' non-casting email(s), auto-replies, and newsletters from the queue.');
+        redirect(admin_url('ckm_talent_pipeline'));
+    }
+
+    /**
+     * Clear / Dismiss All Pending Potentials
+     */
+    public function clear_all_potentials()
+    {
+        if (!has_permission('ckm_talent_pipeline', '', 'delete') && !is_admin()) {
+            access_denied('ckm_talent_pipeline');
+        }
+
+        $count = $this->ckm_talent_pipeline_model->dismiss_all_potentials();
+        set_alert('warning', 'Cleared ' . $count . ' casting opportunities from the queue.');
+        redirect(admin_url('ckm_talent_pipeline'));
+    }
+
+    /**
+     * Bulk Action on Potentials (Batch Accept / Batch Dismiss)
+     */
+    public function bulk_potentials()
+    {
+        if ($this->input->post()) {
+            $action = $this->input->post('bulk_action');
+            $ids    = $this->input->post('potential_ids');
+
+            if (!empty($ids) && is_array($ids)) {
+                $processed = 0;
+                foreach ($ids as $id) {
+                    if ($action === 'accept') {
+                        if ($this->ckm_talent_pipeline_model->convert_potential_to_job($id)) {
+                            $processed++;
+                        }
+                    } elseif ($action === 'dismiss') {
+                        if ($this->ckm_talent_pipeline_model->dismiss_potential($id)) {
+                            $processed++;
+                        }
+                    }
+                }
+                set_alert('success', 'Bulk ' . ($action === 'accept' ? 'accepted ' : 'dismissed ') . $processed . ' casting leads.');
+            }
+            redirect(admin_url('ckm_talent_pipeline'));
+        }
+    }
+
+    /**
      * Manual Trigger to Poll Inbox
      */
     public function poll_inbox()

@@ -74,8 +74,13 @@ class Ckm_talent_pipeline_model extends App_Model
             }
         }
 
-        // Smart Extraction Logic
-        $parsed = $this->parse_raw_casting_text($subject . "\n" . $body);
+        // Filter out spam, automated replies, out of office, and newsletter blasts
+        if ($this->is_spam_or_autoreply($from_name, $from_email, $subject, $body)) {
+            return false;
+        }
+
+        // Smart Extraction Logic (combining subject + body)
+        $parsed = $this->parse_raw_casting_text($body, $subject);
 
         $data = [
             'email_uid'       => $email_uid ?: md5($from_email . $subject . time()),
@@ -114,10 +119,51 @@ class Ckm_talent_pipeline_model extends App_Model
     }
 
     /**
-     * Parse Casting Text Heuristics
+     * Detect spam, newsletters, automated replies, and out-of-office notifications
      */
-    public function parse_raw_casting_text($text)
+    public function is_spam_or_autoreply($from_name, $from_email, $subject, $body)
     {
+        $subject_lower = strtolower(trim($subject));
+        $from_lower    = strtolower(trim($from_email));
+        $name_lower    = strtolower(trim($from_name));
+        $body_lower    = strtolower(trim($body));
+
+        // 1. Auto-Replies, Out of office, Bounces
+        if (preg_match('/^(automatic reply|auto-reply|auto-response|out of office|undelivered mail|delivery status notification|mail delivery failed|security alert|action required|password reset|verify your account|confirm your email|receipt for|your receipt|invoice from|order confirmation)/i', $subject_lower)) {
+            return true;
+        }
+
+        // 2. Automated / Newsletter sender addresses and domains
+        if (preg_match('/(noreply|no-reply|donotreply|newsletter|news@|promotions@|marketing@|billing@|support@waves|notification@facebookmail|mailer-daemon|postmaster@|bounce)/i', $from_lower)) {
+            return true;
+        }
+
+        if (preg_match('/(facebookmail\.com|linkedin\.com|twitter\.com|instagram\.com|waves-audio\.com|waves\.com|plugin-alliance\.com|izotope\.com|native-instruments\.com)/i', $from_lower)) {
+            return true;
+        }
+
+        // 3. Generic spam / cold sales outreach without casting info
+        if (preg_match('/^(just reply 1 to 4|quick random question\??|quick question\??|interested in leads\??|seo proposal|guest post inquiry)/i', $subject_lower)) {
+            return true;
+        }
+
+        // 4. Marketing emails with unsubscribe footers and zero casting context
+        if (strpos($body_lower, 'unsubscribe') !== false || strpos($body_lower, 'opt-out') !== false) {
+            $has_casting_context = preg_match('/(audition|casting call|script attached|voiceover for|voice over for|bsf|buyout fee|word count)/i', $body_lower);
+            if (!$has_casting_context) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Parse Casting Text Heuristics (Extract Title, Role, Word Count, Rates from Subject + Body)
+     */
+    public function parse_raw_casting_text($text, $subject = '')
+    {
+        $combined = $subject . "\n" . $text;
         $lines = explode("\n", $text);
         $parsed = [
             'title'    => '',
@@ -129,34 +175,87 @@ class Ckm_talent_pipeline_model extends App_Model
         ];
 
         // 1. Extract Project Title
-        if (preg_match('/(?:Subject|Project|Campaign|Title|Job):\s*([^\n\r]+)/i', $text, $matches)) {
-            $parsed['title'] = trim(preg_replace('/^(Re:\s*|Fwd:\s*|Audition:\s*|Casting:\s*)/i', '', $matches[1]));
-        } elseif (!empty($lines[0])) {
-            $parsed['title'] = trim(preg_replace('/^(Re:\s*|Fwd:\s*|Subject:\s*)/i', '', $lines[0]));
+        if (!empty($subject)) {
+            $cleaned_subj = preg_replace('/^(Re:\s*|Fwd:\s*|Fw:\s*|\[EXTERNAL\]\s*|Casting:\s*|Audition:\s*)/i', '', $subject);
+            // Handle compound titles like "77 jobs near you: Podcast Host - £250 Flat Fee..." or "Project Alpha - VO Casting"
+            if (preg_match('/(?:jobs near you:\s*|new project:\s*)([^-|]+)/i', $cleaned_subj, $m)) {
+                $parsed['title'] = trim($m[1]);
+            } else {
+                $parts = preg_split('/[-|]/', $cleaned_subj);
+                $parsed['title'] = trim($parts[0]);
+            }
+        }
+
+        if (empty($parsed['title'])) {
+            if (preg_match('/(?:Subject|Project|Campaign|Title|Job):\s*([^\n\r]+)/i', $text, $matches)) {
+                $parsed['title'] = trim(preg_replace('/^(Re:\s*|Fwd:\s*|Audition:\s*|Casting:\s*)/i', '', $matches[1]));
+            } elseif (!empty($lines[0])) {
+                $parsed['title'] = trim(preg_replace('/^(Re:\s*|Fwd:\s*|Subject:\s*)/i', '', $lines[0]));
+            }
         }
 
         // 2. Extract Role
-        if (preg_match('/(?:Role|Character|Voice|Persona):\s*([^\n\r]+)/i', $text, $matches)) {
+        if (preg_match('/(?:Role|Character|Voice|Persona|Seeking):\s*([^\n\r,;]+)/i', $combined, $matches)) {
+            $parsed['role'] = trim($matches[1]);
+        } elseif (preg_match('/\b(Podcast Host|Narrator|Commercial Voice|Audiobook Narrator|Announcer|Lead Character|Voice Actor|Presenter)\b/i', $combined, $matches)) {
             $parsed['role'] = trim($matches[1]);
         }
 
         // 3. Extract Word Count
-        if (preg_match('/(\d+)\s*(?:words|word|w)\b/i', $text, $matches)) {
-            $parsed['words'] = (int)$matches[1];
+        if (preg_match('/(\d+(?:,\d{3})*)\s*(?:words|word|w)\b/i', $combined, $matches)) {
+            $parsed['words'] = (int)str_replace(',', '', $matches[1]);
         }
 
-        // 4. Extract Rates
-        if (preg_match('/(?:BSF|Session Fee|Base Fee|Fee):\s*[£$€]?\s*(\d+(?:\.\d{2})?)/i', $text, $matches)) {
-            $parsed['bsf'] = (float)$matches[1];
+        // 4. Extract Rates (Check Subject + Body for Flat Fees, BSF, Budgets)
+        if (preg_match('/[£$€]\s*(\d+(?:,\d{3})*(?:\.\d{2})?)\s*(?:Flat Fee|BSF|Session Fee|Base Fee|Per Hour|\/hr|day rate|total)?/i', $combined, $matches)) {
+            $parsed['bsf'] = (float)str_replace(',', '', $matches[1]);
+        } elseif (preg_match('/(?:BSF|Session Fee|Base Fee|Fee|Budget|Rate|Payment|Offering):\s*[£$€]?\s*(\d+(?:,\d{3})*(?:\.\d{2})?)/i', $combined, $matches)) {
+            $parsed['bsf'] = (float)str_replace(',', '', $matches[1]);
         }
-        if (preg_match('/(?:Usage|Buyout|Licensing):\s*[£$€]?\s*(\d+(?:\.\d{2})?)/i', $text, $matches)) {
-            $parsed['usage'] = (float)$matches[1];
+
+        // Usage / Buyout
+        if (preg_match('/(?:Usage|Buyout|Licensing|Commercial Rights):\s*[£$€]?\s*(\d+(?:,\d{3})*(?:\.\d{2})?)/i', $combined, $matches)) {
+            $parsed['usage'] = (float)str_replace(',', '', $matches[1]);
         }
-        if ($parsed['bsf'] == 0 && preg_match('/(?:Budget|Rate|Total Fee):\s*[£$€]?\s*(\d+(?:\.\d{2})?)/i', $text, $matches)) {
-            $parsed['bsf'] = (float)$matches[1];
+
+        // 5. Extract Deadline
+        if (preg_match('/(?:Deadline|Due Date|Due By|Audition Due):\s*([^\n\r]+)/i', $combined, $matches)) {
+            $d_time = strtotime(trim($matches[1]));
+            if ($d_time) {
+                $parsed['deadline'] = date('Y-m-d', $d_time);
+            }
         }
 
         return $parsed;
+    }
+
+    /**
+     * Purge Existing Spam & Auto-Replies from the Potentials Queue
+     */
+    public function purge_spam_potentials()
+    {
+        $this->db->where('status', 'pending');
+        $potentials = $this->db->get(db_prefix() . 'ckm_talent_potentials')->result_array();
+
+        $purged_count = 0;
+        foreach ($potentials as $pot) {
+            if ($this->is_spam_or_autoreply($pot['from_name'], $pot['from_email'], $pot['subject'], $pot['raw_body'])) {
+                $this->db->where('id', $pot['id']);
+                $this->db->update(db_prefix() . 'ckm_talent_potentials', ['status' => 'dismissed']);
+                $purged_count++;
+            }
+        }
+        return $purged_count;
+    }
+
+    /**
+     * Dismiss All Pending Potentials
+     */
+    public function dismiss_all_potentials()
+    {
+        $this->db->where('status', 'pending');
+        $this->db->update(db_prefix() . 'ckm_talent_potentials', ['status' => 'dismissed']);
+        return $this->db->affected_rows();
     }
 
     /**
@@ -297,6 +396,11 @@ class Ckm_talent_pipeline_model extends App_Model
                 $from_email = isset($header->from[0]->mailbox) && isset($header->from[0]->host) ? $header->from[0]->mailbox . '@' . $header->from[0]->host : '';
                 $subject = isset($header->subject) ? mb_decode_mimeheader($header->subject) : 'No Subject';
                 $body = $this->extract_email_body($inbox, $email_number);
+
+                // Early skip for spam, out-of-office auto-replies, bounces, and newsletter blasts
+                if ($this->is_spam_or_autoreply($from_name, $from_email, $subject, $body)) {
+                    continue;
+                }
 
                 // Filter check
                 $is_match = false;
