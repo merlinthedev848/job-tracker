@@ -51,7 +51,31 @@ if (!$CI->db->table_exists(db_prefix() . 'ckm_talent_jobs')) {
     }
 }
 
-// 2. Lookup Categories (Commercial, E-Learning, Animation, etc.)
+// 2. Inbound Potentials Queue Table
+if (!$CI->db->table_exists(db_prefix() . 'ckm_talent_potentials')) {
+    $CI->db->query("CREATE TABLE `" . db_prefix() . "ckm_talent_potentials` (
+        `id` INT(11) NOT NULL AUTO_INCREMENT,
+        `email_uid` VARCHAR(255) DEFAULT NULL,
+        `from_name` VARCHAR(150) DEFAULT NULL,
+        `from_email` VARCHAR(150) DEFAULT NULL,
+        `subject` VARCHAR(255) DEFAULT NULL,
+        `raw_body` LONGTEXT DEFAULT NULL,
+        `parsed_title` VARCHAR(255) DEFAULT NULL,
+        `parsed_role` VARCHAR(150) DEFAULT NULL,
+        `parsed_words` INT(11) DEFAULT 0,
+        `parsed_bsf` DECIMAL(15,2) DEFAULT '0.00',
+        `parsed_usage` DECIMAL(15,2) DEFAULT '0.00',
+        `parsed_deadline` DATE DEFAULT NULL,
+        `status` VARCHAR(50) NOT NULL DEFAULT 'pending',
+        `job_id` INT(11) DEFAULT NULL,
+        `created_at` DATETIME NOT NULL,
+        PRIMARY KEY (`id`),
+        KEY `email_uid` (`email_uid`),
+        KEY `status` (`status`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
+}
+
+// 3. Lookup Categories
 if (!$CI->db->table_exists(db_prefix() . 'ckm_talent_categories')) {
     $CI->db->query("CREATE TABLE `" . db_prefix() . "ckm_talent_categories` (
         `id` INT(11) NOT NULL AUTO_INCREMENT,
@@ -75,7 +99,7 @@ if (!$CI->db->table_exists(db_prefix() . 'ckm_talent_categories')) {
     $CI->db->insert_batch(db_prefix() . 'ckm_talent_categories', $default_categories);
 }
 
-// 3. Lookup Sources (Direct Client, Agent, Voice123, Voices, Spotlight, Backstage)
+// 4. Lookup Sources
 if (!$CI->db->table_exists(db_prefix() . 'ckm_talent_sources')) {
     $CI->db->query("CREATE TABLE `" . db_prefix() . "ckm_talent_sources` (
         `id` INT(11) NOT NULL AUTO_INCREMENT,
@@ -98,7 +122,7 @@ if (!$CI->db->table_exists(db_prefix() . 'ckm_talent_sources')) {
     $CI->db->insert_batch(db_prefix() . 'ckm_talent_sources', $default_sources);
 }
 
-// 4. Loss Reasons
+// 5. Loss Reasons
 if (!$CI->db->table_exists(db_prefix() . 'ckm_talent_loss_reasons')) {
     $CI->db->query("CREATE TABLE `" . db_prefix() . "ckm_talent_loss_reasons` (
         `id` INT(11) NOT NULL AUTO_INCREMENT,

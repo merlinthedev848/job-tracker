@@ -15,7 +15,7 @@ class Ckm_talent_pipeline_model extends App_Model
      */
     public function check_database_tables()
     {
-        if (!$this->db->table_exists(db_prefix() . 'ckm_talent_jobs')) {
+        if (!$this->db->table_exists(db_prefix() . 'ckm_talent_jobs') || !$this->db->table_exists(db_prefix() . 'ckm_talent_potentials')) {
             if (file_exists(__DIR__ . '/../install.php')) {
                 require_once(__DIR__ . '/../install.php');
             }
@@ -48,6 +48,258 @@ class Ckm_talent_pipeline_model extends App_Model
         $this->db->order_by("$table_jobs.id", 'desc');
         $res = $this->db->get();
         return $res ? $res->result_array() : [];
+    }
+
+    /**
+     * Get Pending Inbound Potentials
+     */
+    public function get_pending_potentials()
+    {
+        $this->db->where('status', 'pending');
+        $this->db->order_by('id', 'desc');
+        $res = $this->db->get(db_prefix() . 'ckm_talent_potentials');
+        return $res ? $res->result_array() : [];
+    }
+
+    /**
+     * Ingest Inbound Email / Webhook Message
+     */
+    public function ingest_inbound_message($from_name, $from_email, $subject, $body, $email_uid = null)
+    {
+        // Prevent duplicate ingestion if email_uid provided
+        if (!empty($email_uid)) {
+            $this->db->where('email_uid', $email_uid);
+            if ($this->db->count_all_results(db_prefix() . 'ckm_talent_potentials') > 0) {
+                return false;
+            }
+        }
+
+        // Smart Extraction Logic
+        $parsed = $this->parse_raw_casting_text($subject . "\n" . $body);
+
+        $data = [
+            'email_uid'       => $email_uid ?: md5($from_email . $subject . time()),
+            'from_name'       => $from_name,
+            'from_email'      => $from_email,
+            'subject'         => $subject,
+            'raw_body'        => $body,
+            'parsed_title'    => $parsed['title'] ?: $subject,
+            'parsed_role'     => $parsed['role'] ?: 'Voice Talent / Performer',
+            'parsed_words'    => $parsed['words'] ?: 0,
+            'parsed_bsf'      => $parsed['bsf'] ?: 0.00,
+            'parsed_usage'    => $parsed['usage'] ?: 0.00,
+            'parsed_deadline' => $parsed['deadline'] ?: null,
+            'status'          => 'pending',
+            'created_at'      => date('Y-m-d H:i:s')
+        ];
+
+        $this->db->insert(db_prefix() . 'ckm_talent_potentials', $data);
+        $insert_id = $this->db->insert_id();
+
+        if ($insert_id) {
+            // Notify Admin Staff
+            $this->load->model('staff_model');
+            $staff = $this->staff_model->get('', ['active' => 1, 'admin' => 1]);
+            foreach ($staff as $member) {
+                add_notification([
+                    'description'     => 'New Casting Inbound: ' . ($data['parsed_title'] ?: $subject) . ' from ' . $from_name,
+                    'touserid'        => $member['staffid'],
+                    'link'            => 'ckm_talent_pipeline?tab=potentials',
+                    'additional_data' => serialize([$data['parsed_title']])
+                ]);
+            }
+            return $insert_id;
+        }
+        return false;
+    }
+
+    /**
+     * Parse Casting Text Heuristics
+     */
+    public function parse_raw_casting_text($text)
+    {
+        $lines = explode("\n", $text);
+        $parsed = [
+            'title'    => '',
+            'role'     => '',
+            'words'    => 0,
+            'bsf'      => 0.00,
+            'usage'    => 0.00,
+            'deadline' => null
+        ];
+
+        // 1. Extract Project Title
+        if (preg_match('/(?:Subject|Project|Campaign|Title|Job):\s*([^\n\r]+)/i', $text, $matches)) {
+            $parsed['title'] = trim(preg_replace('/^(Re:\s*|Fwd:\s*|Audition:\s*|Casting:\s*)/i', '', $matches[1]));
+        } elseif (!empty($lines[0])) {
+            $parsed['title'] = trim(preg_replace('/^(Re:\s*|Fwd:\s*|Subject:\s*)/i', '', $lines[0]));
+        }
+
+        // 2. Extract Role
+        if (preg_match('/(?:Role|Character|Voice|Persona):\s*([^\n\r]+)/i', $text, $matches)) {
+            $parsed['role'] = trim($matches[1]);
+        }
+
+        // 3. Extract Word Count
+        if (preg_match('/(\d+)\s*(?:words|word|w)\b/i', $text, $matches)) {
+            $parsed['words'] = (int)$matches[1];
+        }
+
+        // 4. Extract Rates
+        if (preg_match('/(?:BSF|Session Fee|Base Fee|Fee):\s*[£$€]?\s*(\d+(?:\.\d{2})?)/i', $text, $matches)) {
+            $parsed['bsf'] = (float)$matches[1];
+        }
+        if (preg_match('/(?:Usage|Buyout|Licensing):\s*[£$€]?\s*(\d+(?:\.\d{2})?)/i', $text, $matches)) {
+            $parsed['usage'] = (float)$matches[1];
+        }
+        if ($parsed['bsf'] == 0 && preg_match('/(?:Budget|Rate|Total Fee):\s*[£$€]?\s*(\d+(?:\.\d{2})?)/i', $text, $matches)) {
+            $parsed['bsf'] = (float)$matches[1];
+        }
+
+        return $parsed;
+    }
+
+    /**
+     * Convert Potential to Active Job
+     */
+    public function convert_potential_to_job($potential_id)
+    {
+        $this->db->where('id', $potential_id);
+        $potential = $this->db->get(db_prefix() . 'ckm_talent_potentials')->row();
+        if (!$potential) return false;
+
+        // Try to match or create Client by email
+        $client_id = null;
+        if (!empty($potential->from_email)) {
+            $this->db->select('userid');
+            $this->db->where('company', $potential->from_name);
+            $client_check = $this->db->get(db_prefix() . 'clients')->row();
+            if ($client_check) {
+                $client_id = $client_check->userid;
+            }
+        }
+
+        $gross = (float)$potential->parsed_bsf + (float)$potential->parsed_usage;
+
+        $job_data = [
+            'job_title'          => $potential->parsed_title ?: $potential->subject,
+            'client_id'          => $client_id,
+            'agent_name'         => $potential->from_name ?: $potential->from_email,
+            'status'             => 'quote_sent',
+            'role_name'          => $potential->parsed_role,
+            'word_count'         => $potential->parsed_words,
+            'bsf_amount'         => $potential->parsed_bsf,
+            'usage_amount'       => $potential->parsed_usage,
+            'total_amount'       => $gross,
+            'net_amount'         => $gross,
+            'delivery_deadline'  => $potential->parsed_deadline,
+            'notes'              => "--- INBOUND CASTING EMAIL ---\nFrom: " . $potential->from_name . " <" . $potential->from_email . ">\nSubject: " . $potential->subject . "\n\n" . $potential->raw_body,
+            'date_created'       => date('Y-m-d H:i:s'),
+            'date_updated'       => date('Y-m-d H:i:s')
+        ];
+
+        $this->db->insert(db_prefix() . 'ckm_talent_jobs', $job_data);
+        $job_id = $this->db->insert_id();
+
+        if ($job_id) {
+            $this->db->where('id', $potential_id);
+            $this->db->update(db_prefix() . 'ckm_talent_potentials', ['status' => 'converted', 'job_id' => $job_id]);
+            return $job_id;
+        }
+        return false;
+    }
+
+    /**
+     * Dismiss Potential
+     */
+    public function dismiss_potential($potential_id)
+    {
+        $this->db->where('id', $potential_id);
+        $this->db->update(db_prefix() . 'ckm_talent_potentials', ['status' => 'dismissed']);
+        return $this->db->affected_rows() > 0;
+    }
+
+    /**
+     * Poll IMAP Inbox for Castings (Cron or Manual Trigger)
+     */
+    public function poll_inbox_for_castings()
+    {
+        $host = get_option('ckm_talent_imap_host');
+        $user = get_option('ckm_talent_imap_user');
+        $pass = get_option('ckm_talent_imap_pass');
+        $port = get_option('ckm_talent_imap_port') ?: '993';
+        $enc  = get_option('ckm_talent_imap_encryption') ?: 'ssl';
+
+        if (empty($host) || empty($user) || empty($pass)) {
+            return false; // Not configured yet
+        }
+
+        if (!function_exists('imap_open')) {
+            return false;
+        }
+
+        $mailbox = "{" . $host . ":" . $port . "/imap/" . $enc . "}INBOX";
+        $inbox = @imap_open($mailbox, $user, $pass);
+
+        if (!$inbox) {
+            return false;
+        }
+
+        // Search for unread emails with casting keywords
+        $emails = imap_search($inbox, 'UNSEEN');
+        $count = 0;
+
+        if ($emails) {
+            rsort($emails);
+            foreach (array_slice($emails, 0, 15) as $email_number) {
+                $header = imap_headerinfo($inbox, $email_number);
+                $from_name = isset($header->from[0]->personal) ? $header->from[0]->personal : '';
+                $from_email = isset($header->from[0]->mailbox) && isset($header->from[0]->host) ? $header->from[0]->mailbox . '@' . $header->from[0]->host : '';
+                $subject = isset($header->subject) ? mb_decode_mimeheader($header->subject) : 'No Subject';
+                $body = imap_fetchbody($inbox, $email_number, 1);
+                $uid = imap_uid($inbox, $email_number);
+
+                // Check for casting keywords
+                $full_text = $subject . ' ' . $body;
+                if (preg_match('/(audition|casting|voiceover|voice-over|voice\s+over|voice\s+actor|bsf|buyout|self-tape|sides|mp3|wav)/i', $full_text)) {
+                    $this->ingest_inbound_message($from_name, $from_email, $subject, strip_tags($body), (string)$uid);
+                    $count++;
+                }
+            }
+        }
+
+        imap_close($inbox);
+        return $count;
+    }
+
+    /**
+     * Generate Auto Quotation Draft Response
+     */
+    public function generate_auto_quote_text($potential_id)
+    {
+        $this->db->where('id', $potential_id);
+        $p = $this->db->get(db_prefix() . 'ckm_talent_potentials')->row();
+        if (!$p) return '';
+
+        $salutation = !empty($p->from_name) ? "Hi " . explode(' ', $p->from_name)[0] . "," : "Hi there,";
+        $bsf = ($p->parsed_bsf > 0) ? "£" . number_format($p->parsed_bsf, 2) : "£300.00";
+        $usage = ($p->parsed_usage > 0) ? "£" . number_format($p->parsed_usage, 2) : "Included / To be confirmed";
+        $total = ($p->parsed_bsf > 0 || $p->parsed_usage > 0) ? "£" . number_format($p->parsed_bsf + $p->parsed_usage, 2) : "£300.00";
+
+        $draft = "$salutation\n\n" .
+                 "Thank you for reaching out regarding the \"{$p->parsed_title}\" project!\n\n" .
+                 "I would be delighted to provide voice-over services for the role of {$p->parsed_role}.\n\n" .
+                 "--- QUOTE & USAGE BREAKDOWN ---\n" .
+                 "• Basic Session Fee (BSF): $bsf\n" .
+                 "• Licensing & Usage Rights: $usage\n" .
+                 "• Total Proposed Rate: $total\n" .
+                 "• Studio Delivery Specs: 48kHz / 24-bit Broadcast Quality WAV (Raw or Edited)\n" .
+                 "• Live Direction Available via: Cleanfeed / Source-Connect / Zoom\n\n" .
+                 "Please let me know if this works for your schedule, and I will reserve studio time accordingly.\n\n" .
+                 "Best regards,\n" .
+                 get_staff_full_name(get_staff_user_id());
+
+        return $draft;
     }
 
     /**
@@ -469,7 +721,7 @@ class Ckm_talent_pipeline_model extends App_Model
         $current_month_net = ($month_rev && $month_rev->month_net_revenue) ? (float)$month_rev->month_net_revenue : 0.00;
         $goal_percent = ($monthly_goal > 0) ? min(100, round(($current_month_net / $monthly_goal) * 100)) : 0;
 
-        // Auditions needed calculation (Goal remainder ÷ avg revenue per win ÷ conversion rate)
+        // Auditions needed calculation
         $avg_deal_size = ($won_jobs > 0 && $revenue && $revenue->net_revenue) ? ($revenue->net_revenue / $won_jobs) : 350.00;
         $remaining_goal = max(0, $monthly_goal - $current_month_net);
         $needed_wins = ceil($remaining_goal / max(100, $avg_deal_size));

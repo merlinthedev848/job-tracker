@@ -3,6 +3,30 @@
 
 <div id="wrapper">
     <div class="content">
+        <!-- Inbound Potentials Alert Banner (if any pending) -->
+        <?php if (!empty($potentials)) { ?>
+            <div class="row mbot15">
+                <div class="col-md-12">
+                    <div class="alert alert-success display-flex justify-between align-center p12 mbot0 ckm-potentials-banner">
+                        <div class="display-flex align-center">
+                            <span class="badge bg-warning font-medium p8 mright10"><i class="fa fa-envelope-open"></i> <?php echo count($potentials); ?></span>
+                            <div>
+                                <h4 class="bold mtop0 mbot5 text-dark">
+                                    <?php echo count($potentials); ?> New Inbound Casting Opportunity(s) Detected!
+                                </h4>
+                                <span class="font-xs text-muted">The inbox monitor has parsed new audition breakdowns ready for your review.</span>
+                            </div>
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-success bold" onclick="$('#potentials_tray_modal').modal('show');">
+                                <i class="fa fa-bolt"></i> Review & Accept Potentials
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php } ?>
+
         <!-- Monthly Revenue & Goal Tracker Banner -->
         <div class="row mbot15">
             <div class="col-md-12">
@@ -119,7 +143,7 @@
                             </li>
                             <li role="presentation">
                                 <a href="#tab_crm" aria-controls="tab_crm" role="tab" data-toggle="tab">
-                                    <i class="fa fa-users"></i> <strong>Stay-in-Touch & Lookups</strong>
+                                    <i class="fa fa-cogs"></i> <strong>Settings & Mailbox Monitor</strong>
                                 </a>
                             </li>
                         </ul>
@@ -132,9 +156,21 @@
                                         <button type="button" class="btn btn-primary" onclick="new_talent_job();">
                                             <i class="fa fa-plus"></i> <?php echo _l('ckm_tp_new_job'); ?>
                                         </button>
+                                        
+                                        <!-- Inbound Queue Tray Button -->
+                                        <button type="button" class="btn btn-warning" onclick="$('#potentials_tray_modal').modal('show');">
+                                            <i class="fa fa-inbox"></i> <strong>Inbound Casting Queue</strong>
+                                            <?php if (!empty($potentials)) { ?>
+                                                <span class="badge bg-danger"><?php echo count($potentials); ?></span>
+                                            <?php } ?>
+                                        </button>
+
+                                        <!-- Smart Casting Email Parser -->
                                         <button type="button" class="btn btn-info" onclick="$('#smart_parser_modal').modal('show');">
                                             <i class="fa fa-bolt"></i> <strong>Paste Casting Call</strong>
                                         </button>
+
+                                        <!-- VO Rate Calculator -->
                                         <button type="button" class="btn btn-success" onclick="$('#rate_calculator_modal').modal('show');">
                                             <i class="fa fa-calculator"></i> <strong>Rate Calculator</strong>
                                         </button>
@@ -179,7 +215,6 @@
                             <!-- TAB 2: ANALYTICS & REPORTS -->
                             <div role="tabpanel" class="tab-pane" id="tab_analytics">
                                 <div class="row">
-                                    <!-- Agent / Source Scorecard -->
                                     <div class="col-md-7">
                                         <div class="panel panel-default">
                                             <div class="panel-heading bold"><i class="fa fa-user-secret"></i> Agent & Platform Performance Scorecard</div>
@@ -218,7 +253,6 @@
                                         </div>
                                     </div>
 
-                                    <!-- Revenue by Category -->
                                     <div class="col-md-5">
                                         <div class="panel panel-default">
                                             <div class="panel-heading bold"><i class="fa fa-pie-chart"></i> Revenue by Genre / Category</div>
@@ -254,7 +288,6 @@
                                     </div>
                                 </div>
 
-                                <!-- Loss Reasons Post-Mortem -->
                                 <div class="row">
                                     <div class="col-md-6">
                                         <div class="panel panel-default">
@@ -289,7 +322,7 @@
                             <!-- TAB 3: EXPIRING BUYOUTS & RENEWALS RADAR -->
                             <div role="tabpanel" class="tab-pane" id="tab_buyouts">
                                 <div class="alert alert-warning">
-                                    <i class="fa fa-clock-o"></i> <strong>Passive Renewal Engine:</strong> These commercial and corporate buyout licenses are expiring within the next 90 days. Click <strong>"Pitch Buyout Extension"</strong> to quickly duplicate the job into a new quote for license extension.
+                                    <i class="fa fa-clock-o"></i> <strong>Passive Renewal Engine:</strong> These commercial and corporate buyout licenses are expiring within the next 90 days. Click <strong>"Pitch Buyout Extension"</strong> to duplicate the job into a new quote for license extension.
                                 </div>
 
                                 <div class="table-responsive">
@@ -334,9 +367,67 @@
                                 </div>
                             </div>
 
-                            <!-- TAB 4: STAY-IN-TOUCH & LOOKUPS -->
+                            <!-- TAB 4: SETTINGS & MAILBOX MONITOR -->
                             <div role="tabpanel" class="tab-pane" id="tab_crm">
-                                <!-- Dormant Clients Section -->
+                                <!-- Automated IMAP Inbox Connection Setup -->
+                                <div class="row mbot20">
+                                    <div class="col-md-12">
+                                        <div class="panel panel-primary">
+                                            <div class="panel-heading bold"><i class="fa fa-envelope"></i> Automated Casting Mailbox Monitor (IMAP Connection)</div>
+                                            <div class="panel-body">
+                                                <p class="text-muted font-xs mbot15">
+                                                    Configure your casting inbox below. When the background cron runs (or when you click Check Inbox), the monitor scans for casting keywords (e.g. <em>Audition, Casting, VO, BSF, Buyout</em>) and automatically extracts the project into your <strong>Inbound Casting Queue</strong>.
+                                                </p>
+                                                <?php echo form_open(admin_url('ckm_talent_pipeline/save_imap')); ?>
+                                                <div class="row">
+                                                    <div class="col-md-3">
+                                                        <label class="control-label bold">IMAP Host Server:</label>
+                                                        <input type="text" name="imap_host" class="form-control" value="<?php echo get_option('ckm_talent_imap_host'); ?>" placeholder="e.g. imap.gmail.com or mail.yourdomain.com">
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="control-label bold">Email / Username:</label>
+                                                        <input type="text" name="imap_user" class="form-control" value="<?php echo get_option('ckm_talent_imap_user'); ?>" placeholder="casting@yourdomain.com">
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label class="control-label bold">Password / App Password:</label>
+                                                        <input type="password" name="imap_pass" class="form-control" placeholder="••••••••">
+                                                    </div>
+                                                    <div class="col-md-2">
+                                                        <label class="control-label bold">Port & Encryption:</label>
+                                                        <div class="input-group">
+                                                            <input type="text" name="imap_port" class="form-control" value="<?php echo get_option('ckm_talent_imap_port') ?: '993'; ?>">
+                                                            <span class="input-group-addon">SSL</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-2 ptop25">
+                                                        <button type="submit" class="btn btn-primary btn-block"><i class="fa fa-save"></i> Save IMAP</button>
+                                                    </div>
+                                                </div>
+                                                 <?php echo form_close(); ?>
+
+                                                 <hr class="mtop20 mbot15">
+                                                 <div class="row">
+                                                     <div class="col-md-12">
+                                                         <h5 class="bold"><i class="fa fa-plug text-success"></i> Direct Inbound Webhook (Alternative to IMAP)</h5>
+                                                         <p class="text-muted font-xs mbot10">
+                                                             Connect Zapier, Make, CloudMailin, Mailgun, or SendGrid to instantly push incoming casting opportunities to this module with zero latency.
+                                                         </p>
+                                                         <div class="input-group">
+                                                             <input type="text" class="form-control" id="ckm_webhook_url" readonly value="<?php echo site_url('ckm_talent_pipeline/webhook/' . get_option('ckm_talent_webhook_key')); ?>">
+                                                             <span class="input-group-btn">
+                                                                 <button type="button" class="btn btn-default" onclick="var c=document.getElementById('ckm_webhook_url');c.select();document.execCommand('copy');alert_float('success','Webhook URL copied to clipboard!');">
+                                                                     <i class="fa fa-copy"></i> Copy Webhook URL
+                                                                 </button>
+                                                             </span>
+                                                         </div>
+                                                     </div>
+                                                 </div>
+                                             </div>
+                                         </div>
+                                     </div>
+                                 </div>
+
+                                <!-- Stay-in-Touch Clients Section -->
                                 <div class="row mbot20">
                                     <div class="col-md-12">
                                         <div class="panel panel-default">
@@ -463,5 +554,6 @@
 <?php include(__DIR__ . '/modals/loss_reason_modal.php'); ?>
 <?php include(__DIR__ . '/modals/smart_parser_modal.php'); ?>
 <?php include(__DIR__ . '/modals/rate_calculator_modal.php'); ?>
+<?php include(__DIR__ . '/modals/potentials_tray_modal.php'); ?>
 
 <?php init_tail(); ?>

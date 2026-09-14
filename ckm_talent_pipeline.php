@@ -5,7 +5,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
 /*
 Module Name: CKM Talent Pipeline & Jobs Tracker
 Description: Specialized Voice Over, Actor & Creative Performer Job, Quote & Audition Pipeline with BSF/Usage tracking and 1-click Perfex Invoicing.
-Version: 1.0.3
+Version: 1.0.4
 Requires at least: 2.3.0
 Author: CKM Solutions
 */
@@ -124,15 +124,16 @@ function ckm_talent_pipeline_load_js()
 }
 
 /**
- * Hook into Perfex Cron to check for expiring buyout/usage licenses
+ * Hook into Perfex Cron to check for expiring licenses AND poll casting inbox
  */
-hooks()->add_action('before_cron_run', 'ckm_talent_pipeline_check_expiring_licenses');
+hooks()->add_action('before_cron_run', 'ckm_talent_pipeline_cron_tasks');
 
-function ckm_talent_pipeline_check_expiring_licenses()
+function ckm_talent_pipeline_cron_tasks()
 {
     $CI = &get_instance();
     if (file_exists(__DIR__ . '/models/Ckm_talent_pipeline_model.php')) {
         $CI->load->model('ckm_talent_pipeline/ckm_talent_pipeline_model');
         $CI->ckm_talent_pipeline_model->check_and_notify_expiring_licenses();
+        $CI->ckm_talent_pipeline_model->poll_inbox_for_castings();
     }
 }

@@ -236,13 +236,11 @@ function init_live_search_and_filters() {
         });
     }
 
-    // Search input
     $('#ckm_search_input').on('keyup input', function() {
         searchQuery = $(this).val().toLowerCase().trim();
         filterCards();
     });
 
-    // Genre Filter Pills
     $('.ckm-genre-filter-btn').on('click', function() {
         $('.ckm-genre-filter-btn').removeClass('active');
         $(this).addClass('active');
@@ -272,7 +270,6 @@ function execute_smart_parser() {
         notes: text
     };
 
-    // 1. Extract Project Title
     var titleMatch = text.match(/(?:Subject|Project|Campaign|Title|Job):\s*([^\n\r]+)/i);
     if (titleMatch) {
         parsed.title = titleMatch[1].replace(/^(Re:\s*|Fwd:\s*|Audition:\s*|Casting:\s*)/i, '').trim();
@@ -280,19 +277,16 @@ function execute_smart_parser() {
         parsed.title = lines[0].replace(/^(Re:\s*|Fwd:\s*|Subject:\s*)/i, '').trim();
     }
 
-    // 2. Extract Role / Character
     var roleMatch = text.match(/(?:Role|Character|Voice|Persona):\s*([^\n\r]+)/i);
     if (roleMatch) {
         parsed.role = roleMatch[1].trim();
     }
 
-    // 3. Extract Word Count
     var wordMatch = text.match(/(\d+)\s*(?:words|word|w)\b/i);
     if (wordMatch) {
         parsed.words = parseInt(wordMatch[1]);
     }
 
-    // 4. Extract BSF and Usage Rates
     var bsfMatch = text.match(/(?:BSF|Session Fee|Base Fee|Fee):\s*[£$€]?\s*(\d+(?:\.\d{2})?)/i);
     if (bsfMatch) {
         parsed.bsf = parseFloat(bsfMatch[1]);
@@ -303,7 +297,6 @@ function execute_smart_parser() {
         parsed.usage = parseFloat(usageMatch[1]);
     }
 
-    // If generic budget was mentioned instead
     if (!parsed.bsf && !parsed.usage) {
         var budgetMatch = text.match(/(?:Budget|Rate|Total Fee):\s*[£$€]?\s*(\d+(?:\.\d{2})?)/i);
         if (budgetMatch) {
@@ -311,7 +304,6 @@ function execute_smart_parser() {
         }
     }
 
-    // Close parser modal and open prefilled job modal
     $('#smart_parser_modal').modal('hide');
     new_talent_job();
 
@@ -341,14 +333,12 @@ function calculate_vo_rate_widget() {
     var usageMultiplier = parseFloat($('#calc_medium').val()) || 0;
     var commPercent = parseFloat($('#calc_commission').val()) || 0;
 
-    // Time estimate (150 wpm)
     var totalSeconds = Math.round((words / 150) * 60);
     var mins = Math.floor(totalSeconds / 60);
     var secs = totalSeconds % 60;
     var timeStr = (mins > 0 ? mins + ' min ' : '') + secs + ' sec';
     $('#calc_est_time').text('~' + timeStr);
 
-    // Word count scaling for long form (if > 500 words, add incremental fee)
     var calculatedBsf = baseBsf;
     if (words > 500) {
         var extraWords = words - 500;
@@ -373,7 +363,6 @@ function apply_calculator_rates_to_job() {
 
     $('#rate_calculator_modal').modal('hide');
 
-    // If job modal isn't already open, open it
     if (!$('#talent_job_modal').hasClass('in')) {
         new_talent_job();
     }
@@ -384,4 +373,73 @@ function apply_calculator_rates_to_job() {
     if (words > 0) $('input[name="word_count"]').val(words);
 
     calculate_modal_rates();
+}
+
+/**
+ * Preview Auto-Quotation Draft
+ */
+function preview_auto_quote(potentialId, recipientEmail) {
+    $('#quote_potential_id').val(potentialId || '');
+    $('#quote_send_feedback').addClass('hide').removeClass('alert-success alert-danger').text('');
+    $('#btn_send_quote').prop('disabled', false).html('<i class="fa fa-paper-plane"></i> Send Quotation Email Now');
+    
+    $.get(admin_url + 'ckm_talent_pipeline/get_auto_quote/' + potentialId, function(res) {
+        if (res && res.quote_text) {
+            $('#quote_recipient').val(recipientEmail || '');
+            $('#quote_message_body').val(res.quote_text);
+            $('#auto_quote_modal').modal('show');
+        }
+    }, 'json');
+}
+
+/**
+ * Send Quote Email via AJAX
+ */
+function send_quote_email_ajax() {
+    var potentialId = $('#quote_potential_id').val();
+    var recipient   = $('#quote_recipient').val().trim();
+    var subject     = $('#quote_subject').val().trim();
+    var message     = $('#quote_message_body').val();
+
+    if (!recipient) {
+        alert('Please provide a recipient email address.');
+        return;
+    }
+
+    var $btn = $('#btn_send_quote');
+    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Sending...');
+    $('#quote_send_feedback').addClass('hide');
+
+    $.post(admin_url + 'ckm_talent_pipeline/send_quote_email', {
+        potential_id: potentialId,
+        recipient: recipient,
+        subject: subject,
+        message: message
+    }, function(res) {
+        $btn.prop('disabled', false).html('<i class="fa fa-paper-plane"></i> Send Quotation Email Now');
+        if (res.success) {
+            $('#quote_send_feedback').removeClass('hide alert-danger').addClass('alert-success').text(res.message);
+            setTimeout(function() {
+                $('#auto_quote_modal').modal('hide');
+                window.location.reload();
+            }, 1200);
+        } else {
+            $('#quote_send_feedback').removeClass('hide alert-success').addClass('alert-danger').text(res.message);
+        }
+    }, 'json').fail(function() {
+        $btn.prop('disabled', false).html('<i class="fa fa-paper-plane"></i> Send Quotation Email Now');
+        $('#quote_send_feedback').removeClass('hide alert-success').addClass('alert-danger').text('An error occurred while connecting to the email server.');
+    });
+}
+
+/**
+ * Copy Auto-Quote to Clipboard
+ */
+function copy_quote_to_clipboard() {
+    var copyText = document.getElementById("quote_message_body");
+    copyText.select();
+    copyText.setSelectionRange(0, 99999);
+    document.execCommand("copy");
+    alert_float('success', "Quotation response copied to clipboard! You can paste it directly into your email reply.");
+    $('#auto_quote_modal').modal('hide');
 }

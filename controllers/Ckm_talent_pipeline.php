@@ -37,15 +37,191 @@ class Ckm_talent_pipeline extends AdminController
         $data['source_stats']      = $this->ckm_talent_pipeline_model->get_source_stats();
         $data['loss_stats']        = $this->ckm_talent_pipeline_model->get_loss_stats();
         
-        // Creative Pro Modules: Sessions, Buyouts Radar, Stay-in-Touch
+        // Creative Pro Modules: Sessions, Buyouts Radar, Stay-in-Touch, Inbound Potentials
         $data['upcoming_sessions'] = $this->ckm_talent_pipeline_model->get_upcoming_sessions();
         $data['expiring_licenses'] = $this->ckm_talent_pipeline_model->get_expiring_licenses();
         $data['dormant_clients']   = $this->ckm_talent_pipeline_model->get_dormant_clients();
+        $data['potentials']        = $this->ckm_talent_pipeline_model->get_pending_potentials();
         
         $data['view_mode']         = $this->input->get('view') ?: 'kanban';
         $data['active_tab']        = $this->input->get('tab') ?: 'pipeline';
 
         $this->load->view('manage', $data);
+    }
+
+    /**
+     * Accept & Convert Inbound Potential to Active Job
+     */
+    public function convert_potential($id)
+    {
+        if (!has_permission('ckm_talent_pipeline', '', 'create') && !is_admin()) {
+            access_denied('ckm_talent_pipeline');
+        }
+
+        $job_id = $this->ckm_talent_pipeline_model->convert_potential_to_job($id);
+        if ($job_id) {
+            set_alert('success', 'Inbound casting breakdown converted to active job card successfully!');
+        }
+        redirect(admin_url('ckm_talent_pipeline'));
+    }
+
+    /**
+     * Dismiss Inbound Potential
+     */
+    public function dismiss_potential($id)
+    {
+        if (!has_permission('ckm_talent_pipeline', '', 'delete') && !is_admin()) {
+            access_denied('ckm_talent_pipeline');
+        }
+
+        $this->ckm_talent_pipeline_model->dismiss_potential($id);
+        set_alert('warning', 'Casting potential dismissed.');
+        redirect(admin_url('ckm_talent_pipeline'));
+    }
+
+    /**
+     * Manual Trigger to Poll Inbox
+     */
+    public function poll_inbox()
+    {
+        if (!is_admin()) {
+            access_denied('ckm_talent_pipeline');
+        }
+
+        $count = $this->ckm_talent_pipeline_model->poll_inbox_for_castings();
+        if ($count !== false) {
+            set_alert('success', 'Checked inbox successfully. Ingested ' . $count . ' new casting email(s)!');
+        } else {
+            set_alert('warning', 'Could not connect to mailbox. Please check your IMAP settings in the Settings tab.');
+        }
+        redirect(admin_url('ckm_talent_pipeline'));
+    }
+
+    /**
+     * Save IMAP Configuration Settings
+     */
+    public function save_imap()
+    {
+        if ($this->input->post()) {
+            if (!is_admin()) {
+                access_denied('ckm_talent_pipeline');
+            }
+
+            update_option('ckm_talent_imap_host', trim($this->input->post('imap_host')));
+            update_option('ckm_talent_imap_user', trim($this->input->post('imap_user')));
+            if ($this->input->post('imap_pass')) {
+                update_option('ckm_talent_imap_pass', $this->input->post('imap_pass'));
+            }
+            update_option('ckm_talent_imap_port', trim($this->input->post('imap_port')));
+            update_option('ckm_talent_imap_encryption', trim($this->input->post('imap_encryption')));
+
+            set_alert('success', 'Casting email IMAP settings updated successfully!');
+            redirect(admin_url('ckm_talent_pipeline?tab=crm'));
+        }
+    }
+
+    /**
+     * Fetch Auto-Generated Quote Draft via AJAX
+     */
+    public function get_auto_quote($potential_id)
+    {
+        if ($this->input->is_ajax_request()) {
+            $quote_text = $this->ckm_talent_pipeline_model->generate_auto_quote_text($potential_id);
+            echo json_encode(['quote_text' => $quote_text]);
+            die();
+        }
+    }
+
+    /**
+     * Send Quotation Email directly via Perfex CRM mail system
+     */
+    public function send_quote_email()
+    {
+        if ($this->input->is_ajax_request()) {
+            $potential_id = $this->input->post('potential_id');
+            $recipient    = trim($this->input->post('recipient'));
+            $subject      = trim($this->input->post('subject'));
+            $message      = $this->input->post('message');
+
+            if (empty($recipient) || !filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
+                echo json_encode(['success' => false, 'message' => 'Please provide a valid recipient email address.']);
+                die();
+            }
+
+            if (empty($message)) {
+                echo json_encode(['success' => false, 'message' => 'Email message body cannot be empty.']);
+                die();
+            }
+
+            $this->load->library('email');
+            $this->email->clear(true);
+            $from_email = get_option('smtp_email') ?: get_option('active_language');
+            $from_name  = get_option('companyname') ?: 'Voice Over Talent';
+            
+            $this->email->from($from_email, $from_name);
+            $this->email->to($recipient);
+            $this->email->subject($subject ?: 'Quotation & Availability - Voice Over Services');
+            $this->email->message(nl2br(htmlspecialchars($message)));
+
+            if ($this->email->send()) {
+                if ($potential_id) {
+                    $this->db->where('id', $potential_id);
+                    $this->db->update(db_prefix() . 'ckm_talent_potentials', ['status' => 'quoted']);
+                }
+                echo json_encode(['success' => true, 'message' => 'Quotation email dispatched successfully!']);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Failed to send email. Check your SMTP settings in Setup -> Settings -> Email.']);
+            }
+            die();
+        }
+    }
+
+    /**
+     * Inbound Casting Email Webhook Listener (for Zapier, Make, Cloudmailin, Mailgun, SendGrid)
+     */
+    public function webhook($key = '')
+    {
+        $expected_key = get_option('ckm_talent_webhook_key');
+        if (!empty($expected_key) && $key !== $expected_key) {
+            http_response_code(403);
+            echo json_encode(['status' => 'error', 'message' => 'Invalid Webhook Security Key']);
+            die();
+        }
+
+        $raw_input = file_get_contents('php://input');
+        $json_data = json_decode($raw_input, true);
+
+        $subject    = '';
+        $from_name  = '';
+        $from_email = '';
+        $body       = '';
+
+        if (!empty($json_data)) {
+            $subject    = isset($json_data['subject']) ? $json_data['subject'] : (isset($json_data['headers']['Subject']) ? $json_data['headers']['Subject'] : '');
+            $from_name  = isset($json_data['from_name']) ? $json_data['from_name'] : (isset($json_data['sender']) ? $json_data['sender'] : '');
+            $from_email = isset($json_data['from_email']) ? $json_data['from_email'] : (isset($json_data['from']) ? $json_data['from'] : '');
+            $body       = isset($json_data['body']) ? $json_data['body'] : (isset($json_data['plain']) ? $json_data['plain'] : (isset($json_data['text']) ? $json_data['text'] : $raw_input));
+        } else {
+            $subject    = $this->input->post('subject');
+            $from_name  = $this->input->post('from_name');
+            $from_email = $this->input->post('from_email') ?: $this->input->post('from');
+            $body       = $this->input->post('body') ?: $this->input->post('plain') ?: $this->input->post('text');
+        }
+
+        if (empty($body) && empty($subject)) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'No message payload received']);
+            die();
+        }
+
+        $potential_id = $this->ckm_talent_pipeline_model->ingest_inbound_message($subject, $from_name, $from_email, $body);
+
+        echo json_encode([
+            'status'       => 'success',
+            'potential_id' => $potential_id,
+            'message'      => 'Inbound casting call ingested into potential queue'
+        ]);
+        die();
     }
 
     /**
