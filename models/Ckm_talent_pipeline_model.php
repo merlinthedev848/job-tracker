@@ -228,7 +228,7 @@ class Ckm_talent_pipeline_model extends App_Model
         $user = get_option('ckm_talent_imap_user');
         $pass = get_option('ckm_talent_imap_pass');
         $port = get_option('ckm_talent_imap_port') ?: '993';
-        $enc  = get_option('ckm_talent_imap_encryption') ?: 'ssl';
+        $enc  = strtolower(get_option('ckm_talent_imap_encryption') ?: 'ssl');
 
         if (empty($host) || empty($user) || empty($pass)) {
             return false; // Not configured yet
@@ -238,38 +238,229 @@ class Ckm_talent_pipeline_model extends App_Model
             return false;
         }
 
-        $mailbox = "{" . $host . ":" . $port . "/imap/" . $enc . "}INBOX";
-        $inbox = @imap_open($mailbox, $user, $pass);
-
-        if (!$inbox) {
-            return false;
+        $enc_flag = '';
+        if ($enc === 'ssl') {
+            $enc_flag = '/imap/ssl/novalidate-cert';
+        } elseif ($enc === 'tls') {
+            $enc_flag = '/imap/tls/novalidate-cert';
+        } else {
+            $enc_flag = '/imap/notls';
         }
 
-        // Search for unread emails with casting keywords
-        $emails = imap_search($inbox, 'UNSEEN');
+        $mailbox = "{" . $host . ":" . $port . $enc_flag . "}INBOX";
+        $inbox = @imap_open($mailbox, $user, $pass, OP_READONLY, 1);
+
+        if (!$inbox) {
+            // Fallback retry with default flags if custom cert flag failed
+            $mailbox_fallback = "{" . $host . ":" . $port . "/imap/" . $enc . "}INBOX";
+            $inbox = @imap_open($mailbox_fallback, $user, $pass, OP_READONLY, 1);
+            if (!$inbox) {
+                return false;
+            }
+        }
+
+        $search_mode = get_option('ckm_talent_imap_search_mode') ?: 'unseen_and_recent';
+        $filter_mode = get_option('ckm_talent_ingest_filter_mode') ?: 'keywords';
+        $auto_convert = (int)get_option('ckm_talent_auto_convert_to_jobs') === 1;
+
+        // 1. Search for UNSEEN emails first
+        $emails = @imap_search($inbox, 'UNSEEN');
+
+        // 2. If no unseen emails or search mode includes recent, check the latest messages
+        if ((empty($emails) || !is_array($emails)) && $search_mode === 'unseen_and_recent') {
+            $total_msgs = @imap_num_msg($inbox);
+            if ($total_msgs > 0) {
+                $start_msg = max(1, $total_msgs - 30);
+                $emails = range($total_msgs, $start_msg);
+            }
+        }
+
         $count = 0;
 
-        if ($emails) {
+        if (!empty($emails) && is_array($emails)) {
             rsort($emails);
-            foreach (array_slice($emails, 0, 15) as $email_number) {
-                $header = imap_headerinfo($inbox, $email_number);
-                $from_name = isset($header->from[0]->personal) ? $header->from[0]->personal : '';
+            $emails_to_process = array_slice($emails, 0, 30);
+
+            foreach ($emails_to_process as $email_number) {
+                $header = @imap_headerinfo($inbox, $email_number);
+                if (!$header) continue;
+
+                $uid = @imap_uid($inbox, $email_number) ?: (string)$email_number;
+
+                // Skip if already ingested
+                $this->db->where('email_uid', (string)$uid);
+                if ($this->db->count_all_results(db_prefix() . 'ckm_talent_potentials') > 0) {
+                    continue;
+                }
+
+                $from_name = isset($header->from[0]->personal) ? mb_decode_mimeheader($header->from[0]->personal) : '';
                 $from_email = isset($header->from[0]->mailbox) && isset($header->from[0]->host) ? $header->from[0]->mailbox . '@' . $header->from[0]->host : '';
                 $subject = isset($header->subject) ? mb_decode_mimeheader($header->subject) : 'No Subject';
-                $body = imap_fetchbody($inbox, $email_number, 1);
-                $uid = imap_uid($inbox, $email_number);
+                $body = $this->extract_email_body($inbox, $email_number);
 
-                // Check for casting keywords
-                $full_text = $subject . ' ' . $body;
-                if (preg_match('/(audition|casting|voiceover|voice-over|voice\s+over|voice\s+actor|bsf|buyout|self-tape|sides|mp3|wav)/i', $full_text)) {
-                    $this->ingest_inbound_message($from_name, $from_email, $subject, strip_tags($body), (string)$uid);
-                    $count++;
+                // Filter check
+                $is_match = false;
+                if ($filter_mode === 'all') {
+                    $is_match = true;
+                } else {
+                    $full_text = $subject . ' ' . $body;
+                    $casting_pattern = '/(audition|casting|voiceover|voice-over|voice\s*over|voice\s*actor|voice\s*talent|audiobook|narrat|commercial|explainer|dubbing|e-learning|elearning|animation|videogame|video\s*game|promo|podcast|ivr|on-hold|bsf|buyout|self-tape|selftape|sides|mp3|wav|script|performer|actor|actress|voice\s*sample|session\s*fee|usage\s*fee|rate\s*card)/i';
+                    if (preg_match($casting_pattern, $full_text)) {
+                        $is_match = true;
+                    }
+                }
+
+                if ($is_match && !empty($body)) {
+                    $potential_id = $this->ingest_inbound_message($from_name, $from_email, $subject, $body, (string)$uid);
+                    if ($potential_id) {
+                        $count++;
+                        if ($auto_convert) {
+                            $this->convert_potential_to_job($potential_id);
+                        }
+                    }
                 }
             }
         }
 
-        imap_close($inbox);
+        @imap_close($inbox);
         return $count;
+    }
+
+    /**
+     * Test and diagnose IMAP connection with detailed diagnostic reporting
+     */
+    public function test_and_diagnose_imap()
+    {
+        $host = get_option('ckm_talent_imap_host');
+        $user = get_option('ckm_talent_imap_user');
+        $pass = get_option('ckm_talent_imap_pass');
+        $port = get_option('ckm_talent_imap_port') ?: '993';
+        $enc  = strtolower(get_option('ckm_talent_imap_encryption') ?: 'ssl');
+
+        if (empty($host) || empty($user) || empty($pass)) {
+            return [
+                'success' => false,
+                'message' => 'IMAP Host, User, and Password must all be configured before testing.'
+            ];
+        }
+
+        if (!function_exists('imap_open')) {
+            return [
+                'success' => false,
+                'message' => 'The PHP IMAP extension (php_imap) is not enabled on this server. Please enable it in php.ini or use the Webhook listener.'
+            ];
+        }
+
+        $enc_flag = ($enc === 'ssl') ? '/imap/ssl/novalidate-cert' : (($enc === 'tls') ? '/imap/tls/novalidate-cert' : '/imap/notls');
+        $mailbox = "{" . $host . ":" . $port . $enc_flag . "}INBOX";
+
+        $inbox = @imap_open($mailbox, $user, $pass, OP_READONLY, 1);
+        if (!$inbox) {
+            $last_error = imap_last_error();
+            return [
+                'success' => false,
+                'message' => 'Could not connect to IMAP server: ' . ($last_error ?: 'Authentication failed or host unreachable')
+            ];
+        }
+
+        $total_msgs = @imap_num_msg($inbox);
+        $unseen_msgs = @imap_search($inbox, 'UNSEEN');
+        $unseen_count = is_array($unseen_msgs) ? count($unseen_msgs) : 0;
+
+        @imap_close($inbox);
+
+        return [
+            'success'      => true,
+            'message'      => "Connected successfully! Mailbox contains {$total_msgs} total message(s), with {$unseen_count} unread email(s).",
+            'total_msgs'   => $total_msgs,
+            'unseen_count' => $unseen_count
+        ];
+    }
+
+    /**
+     * Helper to extract clean plain text from email structure (supports Base64, Quoted-Printable, and Multiparts)
+     */
+    private function extract_email_body($inbox, $email_number)
+    {
+        $structure = @imap_fetchstructure($inbox, $email_number);
+        if (!$structure) {
+            $raw = @imap_body($inbox, $email_number);
+            return $raw ? trim(strip_tags($raw)) : '';
+        }
+
+        $body = '';
+        if (empty($structure->parts)) {
+            // Single part message
+            $raw = @imap_body($inbox, $email_number);
+            $body = $this->decode_mime_part($raw, $structure->encoding ?? 0);
+            if (isset($structure->subtype) && strtolower($structure->subtype) === 'html') {
+                $body = strip_tags($body);
+            }
+        } else {
+            // Multipart message
+            $body = $this->extract_multipart_body($inbox, $email_number, $structure);
+        }
+
+        if (function_exists('mb_convert_encoding') && !empty($body)) {
+            $body = mb_convert_encoding($body, 'UTF-8', 'UTF-8, ISO-8859-1, Windows-1252, ASCII');
+        }
+
+        return trim(html_entity_decode(strip_tags($body)));
+    }
+
+    /**
+     * Recursively traverse multipart structures for text content
+     */
+    private function extract_multipart_body($inbox, $email_number, $structure, $part_prefix = '')
+    {
+        $plain_text = '';
+        $html_text = '';
+
+        if (!empty($structure->parts)) {
+            foreach ($structure->parts as $idx => $part) {
+                $part_num = empty($part_prefix) ? (string)($idx + 1) : ($part_prefix . '.' . ($idx + 1));
+                
+                if ($part->type == 0) { // Text part
+                    $data = @imap_fetchbody($inbox, $email_number, $part_num);
+                    $decoded = $this->decode_mime_part($data, $part->encoding ?? 0);
+                    
+                    if (isset($part->subtype) && strtolower($part->subtype) === 'plain') {
+                        $plain_text .= $decoded . "\n";
+                    } elseif (isset($part->subtype) && strtolower($part->subtype) === 'html') {
+                        $html_text .= $decoded . "\n";
+                    }
+                } elseif ($part->type == 1 && !empty($part->parts)) { // Sub-multipart
+                    $nested = $this->extract_multipart_body($inbox, $email_number, $part, $part_num);
+                    if (!empty($nested)) {
+                        $plain_text .= $nested . "\n";
+                    }
+                }
+            }
+        }
+
+        if (!empty($plain_text)) {
+            return $plain_text;
+        }
+
+        return !empty($html_text) ? strip_tags($html_text) : '';
+    }
+
+    /**
+     * Decode MIME part based on encoding flag
+     */
+    private function decode_mime_part($data, $encoding)
+    {
+        switch ((int)$encoding) {
+            case 3: // Base64
+                return base64_decode($data);
+            case 4: // Quoted-Printable
+                return quoted_printable_decode($data);
+            case 0: // 7bit
+            case 1: // 8bit
+            case 2: // Binary
+            default:
+                return $data;
+        }
     }
 
     /**

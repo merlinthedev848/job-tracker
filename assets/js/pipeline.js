@@ -443,3 +443,23 @@ function copy_quote_to_clipboard() {
     alert_float('success', "Quotation response copied to clipboard! You can paste it directly into your email reply.");
     $('#auto_quote_modal').modal('hide');
 }
+
+/**
+ * Test IMAP Connection via AJAX
+ */
+function test_imap_connection_ajax() {
+    var $btn = $('#btn_test_imap');
+    $btn.prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Testing Connection...');
+
+    $.get(admin_url + 'ckm_talent_pipeline/test_imap', function(res) {
+        $btn.prop('disabled', false).html('<i class="fa fa-plug"></i> Test Connection &amp; Count Messages');
+        if (res.success) {
+            alert_float('success', res.message);
+        } else {
+            alert_float('warning', res.message);
+        }
+    }, 'json').fail(function() {
+        $btn.prop('disabled', false).html('<i class="fa fa-plug"></i> Test Connection &amp; Count Messages');
+        alert_float('danger', 'Failed to reach server to test IMAP connection.');
+    });
+}

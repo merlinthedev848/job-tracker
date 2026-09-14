@@ -114,10 +114,29 @@ class Ckm_talent_pipeline extends AdminController
             }
             update_option('ckm_talent_imap_port', trim($this->input->post('imap_port')));
             update_option('ckm_talent_imap_encryption', trim($this->input->post('imap_encryption')));
+            
+            update_option('ckm_talent_auto_ingest_enabled', $this->input->post('auto_ingest_enabled') ? 1 : 0);
+            update_option('ckm_talent_auto_convert_to_jobs', $this->input->post('auto_convert_to_jobs') ? 1 : 0);
+            update_option('ckm_talent_ingest_filter_mode', trim($this->input->post('ingest_filter_mode') ?: 'keywords'));
+            update_option('ckm_talent_imap_search_mode', trim($this->input->post('imap_search_mode') ?: 'unseen_and_recent'));
 
-            set_alert('success', 'Casting email IMAP settings updated successfully!');
+            set_alert('success', 'Casting email IMAP & Auto-Ingestion settings updated successfully!');
             redirect(admin_url('ckm_talent_pipeline?tab=crm'));
         }
+    }
+
+    /**
+     * AJAX IMAP Connection Test & Diagnostics
+     */
+    public function test_imap()
+    {
+        if (!is_admin()) {
+            access_denied('ckm_talent_pipeline');
+        }
+
+        $result = $this->ckm_talent_pipeline_model->test_and_diagnose_imap();
+        echo json_encode($result);
+        die();
     }
 
     /**
@@ -214,12 +233,18 @@ class Ckm_talent_pipeline extends AdminController
             die();
         }
 
-        $potential_id = $this->ckm_talent_pipeline_model->ingest_inbound_message($subject, $from_name, $from_email, $body);
+        $potential_id = $this->ckm_talent_pipeline_model->ingest_inbound_message($from_name, $from_email, $subject, $body);
+
+        $job_id = null;
+        if ($potential_id && (int)get_option('ckm_talent_auto_convert_to_jobs') === 1) {
+            $job_id = $this->ckm_talent_pipeline_model->convert_potential_to_job($potential_id);
+        }
 
         echo json_encode([
             'status'       => 'success',
             'potential_id' => $potential_id,
-            'message'      => 'Inbound casting call ingested into potential queue'
+            'job_id'       => $job_id,
+            'message'      => $job_id ? 'Inbound casting call ingested and converted to active job card' : 'Inbound casting call ingested into potential queue'
         ]);
         die();
     }

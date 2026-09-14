@@ -124,9 +124,10 @@ function ckm_talent_pipeline_load_js()
 }
 
 /**
- * Hook into Perfex Cron to check for expiring licenses AND poll casting inbox
+ * Hook into Perfex Cron to check for expiring licenses AND automatically poll casting inbox
  */
 hooks()->add_action('before_cron_run', 'ckm_talent_pipeline_cron_tasks');
+hooks()->add_action('after_cron_run', 'ckm_talent_pipeline_cron_tasks');
 
 function ckm_talent_pipeline_cron_tasks()
 {
@@ -134,6 +135,37 @@ function ckm_talent_pipeline_cron_tasks()
     if (file_exists(__DIR__ . '/models/Ckm_talent_pipeline_model.php')) {
         $CI->load->model('ckm_talent_pipeline/ckm_talent_pipeline_model');
         $CI->ckm_talent_pipeline_model->check_and_notify_expiring_licenses();
-        $CI->ckm_talent_pipeline_model->poll_inbox_for_castings();
+        
+        $auto_enabled = get_option('ckm_talent_auto_ingest_enabled');
+        if ($auto_enabled === '' || (int)$auto_enabled === 1) {
+            $CI->ckm_talent_pipeline_model->poll_inbox_for_castings();
+        }
+    }
+}
+
+/**
+ * Auto-poll on page load / admin activity (ensures emails are automatically ingested even if cron is infrequent)
+ */
+hooks()->add_action('admin_init', 'ckm_talent_pipeline_auto_poll_check');
+
+function ckm_talent_pipeline_auto_poll_check()
+{
+    $CI = &get_instance();
+    $module = $CI->router->fetch_module();
+    $class  = $CI->router->fetch_class();
+
+    if ($module == 'ckm_talent_pipeline' || $class == 'ckm_talent_pipeline') {
+        $auto_enabled = get_option('ckm_talent_auto_ingest_enabled');
+        if ($auto_enabled === '' || (int)$auto_enabled === 1) { // Default enabled
+            $last_poll = (int)get_option('ckm_talent_last_auto_poll_time');
+            // If more than 2 minutes since last poll, trigger automatic check in background
+            if ((time() - $last_poll) > 120) {
+                update_option('ckm_talent_last_auto_poll_time', time());
+                if (file_exists(__DIR__ . '/models/Ckm_talent_pipeline_model.php')) {
+                    $CI->load->model('ckm_talent_pipeline/ckm_talent_pipeline_model');
+                    $CI->ckm_talent_pipeline_model->poll_inbox_for_castings();
+                }
+            }
+        }
     }
 }

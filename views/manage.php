@@ -393,17 +393,65 @@
                                                         <input type="password" name="imap_pass" class="form-control" placeholder="••••••••">
                                                     </div>
                                                     <div class="col-md-2">
-                                                        <label class="control-label bold">Port & Encryption:</label>
-                                                        <div class="input-group">
-                                                            <input type="text" name="imap_port" class="form-control" value="<?php echo get_option('ckm_talent_imap_port') ?: '993'; ?>">
-                                                            <span class="input-group-addon">SSL</span>
-                                                        </div>
+                                                        <label class="control-label bold">Port:</label>
+                                                        <input type="text" name="imap_port" class="form-control" value="<?php echo get_option('ckm_talent_imap_port') ?: '993'; ?>">
                                                     </div>
-                                                    <div class="col-md-2 ptop25">
-                                                        <button type="submit" class="btn btn-primary btn-block"><i class="fa fa-save"></i> Save IMAP</button>
+                                                    <div class="col-md-2">
+                                                        <label class="control-label bold">Encryption:</label>
+                                                        <select name="imap_encryption" class="form-control">
+                                                            <?php $cur_enc = strtolower(get_option('ckm_talent_imap_encryption') ?: 'ssl'); ?>
+                                                            <option value="ssl" <?php echo $cur_enc === 'ssl' ? 'selected' : ''; ?>>SSL (993)</option>
+                                                            <option value="tls" <?php echo $cur_enc === 'tls' ? 'selected' : ''; ?>>TLS (143/993)</option>
+                                                            <option value="notls" <?php echo $cur_enc === 'notls' ? 'selected' : ''; ?>>None / Plain</option>
+                                                        </select>
                                                     </div>
                                                 </div>
-                                                 <?php echo form_close(); ?>
+
+                                                <div class="row mtop15">
+                                                    <div class="col-md-3">
+                                                        <label class="control-label bold">Email Search Scope:</label>
+                                                        <select name="imap_search_mode" class="form-control">
+                                                            <?php $smode = get_option('ckm_talent_imap_search_mode') ?: 'unseen_and_recent'; ?>
+                                                            <option value="unseen_and_recent" <?php echo $smode === 'unseen_and_recent' ? 'selected' : ''; ?>>Unread &amp; Recent Emails (Recommended)</option>
+                                                            <option value="unseen_only" <?php echo $smode === 'unseen_only' ? 'selected' : ''; ?>>Unread Emails Only (UNSEEN)</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label class="control-label bold">Content Filter Mode:</label>
+                                                        <select name="ingest_filter_mode" class="form-control">
+                                                            <?php $fmode = get_option('ckm_talent_ingest_filter_mode') ?: 'keywords'; ?>
+                                                            <option value="keywords" <?php echo $fmode === 'keywords' ? 'selected' : ''; ?>>Smart Keyword Match (Casting, VO, BSF, Buyouts)</option>
+                                                            <option value="all" <?php echo $fmode === 'all' ? 'selected' : ''; ?>>Ingest ALL Inbound Emails to this Box</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-3 ptop20">
+                                                        <div class="checkbox checkbox-primary">
+                                                            <input type="checkbox" name="auto_ingest_enabled" id="auto_ingest_enabled" value="1" <?php echo (get_option('ckm_talent_auto_ingest_enabled') === '' || (int)get_option('ckm_talent_auto_ingest_enabled') === 1) ? 'checked' : ''; ?>>
+                                                            <label for="auto_ingest_enabled" class="bold">Auto-Ingest Active (Cron + Live)</label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3 ptop20">
+                                                        <div class="checkbox checkbox-success">
+                                                            <input type="checkbox" name="auto_convert_to_jobs" id="auto_convert_to_jobs" value="1" <?php echo ((int)get_option('ckm_talent_auto_convert_to_jobs') === 1) ? 'checked' : ''; ?>>
+                                                            <label for="auto_convert_to_jobs" class="bold">Auto-Convert to Active Jobs</label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="row mtop15">
+                                                    <div class="col-md-12 display-flex justify-between align-center">
+                                                        <div>
+                                                            <a href="<?php echo admin_url('ckm_talent_pipeline/poll_inbox'); ?>" class="btn btn-default btn-sm">
+                                                                <i class="fa fa-refresh"></i> Ingest Emails Now
+                                                            </a>
+                                                            <button type="button" class="btn btn-info btn-sm mleft5" id="btn_test_imap" onclick="test_imap_connection_ajax();">
+                                                                <i class="fa fa-plug"></i> Test Connection &amp; Count Messages
+                                                            </button>
+                                                        </div>
+                                                        <button type="submit" class="btn btn-primary"><i class="fa fa-save"></i> Save Settings</button>
+                                                    </div>
+                                                </div>
+                                                <?php echo form_close(); ?>
 
                                                  <hr class="mtop20 mbot15">
                                                  <div class="row">
