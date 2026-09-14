@@ -241,10 +241,13 @@ function init_live_search_and_filters() {
         filterCards();
     });
 
-    $('.ckm-genre-filter-btn').on('click', function() {
-        $('.ckm-genre-filter-btn').removeClass('active');
-        $(this).addClass('active');
-        activeCategory = $(this).data('cat-id');
+    window.filter_by_genre_select = function(val) {
+        activeCategory = val;
+        filterCards();
+    };
+
+    $('#ckm_genre_select').on('change', function() {
+        activeCategory = $(this).val();
         filterCards();
     });
 }

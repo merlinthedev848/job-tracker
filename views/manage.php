@@ -28,27 +28,28 @@
                 <div class="panel_s">
                     <div class="panel-body p15">
                         <!-- Top Header & Modern Navigation Tabs -->
-                        <div class="display-flex justify-between align-center flex-wrap mbot15 pb10 border-bottom">
-                            <div>
+                        <div class="display-flex justify-between align-center flex-wrap mbot20 pb10 border-bottom">
+                            <div class="display-flex align-center gap-10">
                                 <h4 class="bold mtop0 mbot0 text-dark">
-                                    <i class="fa fa-microphone text-primary"></i> Voice Over & Talent Hub
+                                    <i class="fa fa-microphone text-info"></i> Talent Pipeline
                                 </h4>
-                                <span class="text-muted font-xs">
-                                    Pipeline: <strong class="text-warning"><?php echo ckm_format_money($summary['pipeline_value']); ?></strong> &bull; 
-                                    This Month: <strong class="text-success"><?php echo ckm_format_money($summary['month_net_revenue']); ?></strong> / <?php echo ckm_format_money($summary['monthly_goal']); ?> &bull; 
-                                    Win Rate: <strong class="text-primary"><?php echo $summary['conversion_rate']; ?>%</strong>
+                                <span class="badge bg-light text-muted border font-xs mleft10">
+                                    Pipeline: <strong class="text-warning"><?php echo ckm_format_money($summary['pipeline_value']); ?></strong>
+                                </span>
+                                <span class="badge bg-light text-muted border font-xs">
+                                    This Month: <strong class="text-success"><?php echo ckm_format_money($summary['month_net_revenue']); ?></strong>
                                 </span>
                             </div>
 
                             <ul class="nav nav-pills" role="tablist">
                                 <li role="presentation" class="active">
                                     <a href="#tab_pipeline" aria-controls="tab_pipeline" role="tab" data-toggle="tab">
-                                        <i class="fa fa-th-large"></i> <strong>Pipeline Board</strong>
+                                        <i class="fa fa-th-large"></i> <strong>Pipeline</strong>
                                     </a>
                                 </li>
                                 <li role="presentation">
                                     <a href="#tab_analytics" aria-controls="tab_analytics" role="tab" data-toggle="tab">
-                                        <i class="fa fa-bar-chart"></i> <strong>Goals & Analytics</strong>
+                                        <i class="fa fa-bar-chart"></i> <strong>Analytics & Goals</strong>
                                     </a>
                                 </li>
                                 <li role="presentation">
@@ -61,7 +62,7 @@
                                 </li>
                                 <li role="presentation">
                                     <a href="#tab_crm" aria-controls="tab_crm" role="tab" data-toggle="tab">
-                                        <i class="fa fa-cogs"></i> <strong>Mailbox & Settings</strong>
+                                        <i class="fa fa-cog"></i> <strong>Settings</strong>
                                     </a>
                                 </li>
                             </ul>
@@ -70,58 +71,69 @@
                         <div class="tab-content">
                             <!-- TAB 1: PIPELINE BOARD -->
                             <div role="tabpanel" class="tab-pane active" id="tab_pipeline">
-                                <div class="ckm-command-bar mbot15">
+                                <!-- Unified Action & Filter Toolbar -->
+                                <div class="ckm-command-bar mbot20">
                                     <div class="display-flex align-center flex-wrap gap-10">
-                                        <button type="button" class="btn btn-primary" onclick="new_talent_job();">
+                                        <button type="button" class="btn btn-info bold" onclick="new_talent_job();">
                                             <i class="fa fa-plus"></i> <?php echo _l('ckm_tp_new_job'); ?>
                                         </button>
                                         
-                                        <!-- Inbound Queue Tray Button -->
-                                        <button type="button" class="btn btn-warning" onclick="$('#potentials_tray_modal').modal('show');">
-                                            <i class="fa fa-inbox"></i> <strong>Inbound Casting Queue</strong>
+                                        <!-- Inbound Queue Button -->
+                                        <button type="button" class="btn <?php echo !empty($potentials) ? 'btn-warning' : 'btn-default'; ?>" onclick="$('#potentials_tray_modal').modal('show');">
+                                            <i class="fa fa-inbox"></i> Inbound Queue
                                             <?php if (!empty($potentials)) { ?>
-                                                <span class="badge bg-danger"><?php echo count($potentials); ?></span>
+                                                <span class="badge bg-danger mleft5"><?php echo count($potentials); ?></span>
                                             <?php } ?>
                                         </button>
 
-                                        <!-- Smart Casting Email Parser -->
-                                        <button type="button" class="btn btn-info" onclick="$('#smart_parser_modal').modal('show');">
-                                            <i class="fa fa-bolt"></i> <strong>Paste Casting Call</strong>
-                                        </button>
+                                        <!-- VO Tools Dropdown -->
+                                        <div class="dropdown">
+                                            <button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown">
+                                                <i class="fa fa-wrench"></i> VO Tools <span class="caret"></span>
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                <li>
+                                                    <a href="#" onclick="$('#smart_parser_modal').modal('show'); return false;">
+                                                        <i class="fa fa-bolt text-info"></i> Paste Casting Call (Smart Parser)
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a href="#" onclick="$('#rate_calculator_modal').modal('show'); return false;">
+                                                        <i class="fa fa-calculator text-success"></i> VO Rate & Buyout Calculator
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
 
-                                        <!-- VO Rate Calculator -->
-                                        <button type="button" class="btn btn-success" onclick="$('#rate_calculator_modal').modal('show');">
-                                            <i class="fa fa-calculator"></i> <strong>Rate Calculator</strong>
-                                        </button>
+                                        <!-- Compact Genre Filter Select -->
+                                        <div class="display-flex align-center mleft10">
+                                            <i class="fa fa-filter text-muted mright5"></i>
+                                            <select id="ckm_genre_select" class="form-control input-sm" style="width: 170px; border-radius: 16px;" onchange="filter_by_genre_select(this.value);">
+                                                <option value="all">All Genres</option>
+                                                <?php if (!empty($categories)) { ?>
+                                                    <?php foreach ($categories as $cat) { ?>
+                                                        <option value="<?php echo $cat['id']; ?>"><?php echo htmlspecialchars($cat['name']); ?></option>
+                                                    <?php } ?>
+                                                <?php } ?>
+                                            </select>
+                                        </div>
                                     </div>
 
                                     <div class="display-flex align-center gap-10">
                                         <div class="ckm-live-search-box">
                                             <i class="fa fa-search ckm-search-icon"></i>
-                                            <input type="text" id="ckm_search_input" class="form-control" placeholder="Quick search project, client, role...">
+                                            <input type="text" id="ckm_search_input" class="form-control input-sm" placeholder="Search auditions...">
                                         </div>
 
                                         <div class="btn-group">
-                                            <a href="<?php echo admin_url('ckm_talent_pipeline?view=kanban'); ?>" class="btn btn-default <?php echo ($view_mode == 'kanban') ? 'active' : ''; ?>">
-                                                <i class="fa fa-th-large"></i> <?php echo _l('ckm_tp_kanban_view'); ?>
+                                            <a href="<?php echo admin_url('ckm_talent_pipeline?view=kanban'); ?>" class="btn btn-default btn-sm <?php echo ($view_mode == 'kanban') ? 'active btn-primary text-white' : ''; ?>" title="Kanban Board">
+                                                <i class="fa fa-th-large"></i>
                                             </a>
-                                            <a href="<?php echo admin_url('ckm_talent_pipeline?view=list'); ?>" class="btn btn-default <?php echo ($view_mode == 'list') ? 'active' : ''; ?>">
-                                                <i class="fa fa-list"></i> <?php echo _l('ckm_tp_list_view'); ?>
+                                            <a href="<?php echo admin_url('ckm_talent_pipeline?view=list'); ?>" class="btn btn-default btn-sm <?php echo ($view_mode == 'list') ? 'active btn-primary text-white' : ''; ?>" title="List Table">
+                                                <i class="fa fa-list"></i>
                                             </a>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div class="ckm-filter-pills-bar mbot15 display-flex align-center flex-wrap gap-5">
-                                    <span class="font-xs bold text-muted mright5"><i class="fa fa-filter"></i> Genre:</span>
-                                    <button type="button" class="btn btn-default btn-xs ckm-genre-filter-btn active" data-cat-id="all">All</button>
-                                    <?php if (!empty($categories)) { ?>
-                                        <?php foreach ($categories as $cat) { ?>
-                                            <button type="button" class="btn btn-default btn-xs ckm-genre-filter-btn" data-cat-id="<?php echo $cat['id']; ?>">
-                                                <span class="badge" style="background-color: <?php echo $cat['color']; ?>;">&nbsp;</span> <?php echo htmlspecialchars($cat['name']); ?>
-                                            </button>
-                                        <?php } ?>
-                                    <?php } ?>
                                 </div>
 
                                 <?php if ($view_mode == 'kanban') { ?>
