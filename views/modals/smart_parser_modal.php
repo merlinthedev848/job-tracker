@@ -46,11 +46,16 @@ Just do it. Every morning starts with a decision..."></textarea>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('close'); ?></button>
-                <button type="button" class="btn btn-primary btn-lg" onclick="execute_smart_parser();">
-                    <i class="fa fa-magic"></i> Extract & Open Job Card
-                </button>
+            <div class="modal-footer display-flex justify-between align-center">
+                <span class="text-muted font-xs">
+                    <i class="fa fa-info-circle text-info"></i> Automatically detects BSF, Usage, WPM, and script lines.
+                </span>
+                <div>
+                    <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('close'); ?></button>
+                    <button type="button" class="btn btn-primary bold" onclick="execute_smart_parser();">
+                        <i class="fa fa-magic"></i> Extract & Open Job Card
+                    </button>
+                </div>
             </div>
         </div>
     </div>

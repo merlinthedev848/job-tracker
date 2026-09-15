@@ -145,7 +145,10 @@
                 </div>
             </div>
 
-            <div class="modal-footer">
+            <div class="modal-footer display-flex justify-between align-center">
+                <span class="text-muted font-xs">
+                    <i class="fa fa-info-circle text-info"></i> Standardized naming conventions eliminate casting confusion and missing audio files.
+                </span>
                 <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
             </div>
         </div>

@@ -33,19 +33,24 @@
 
                 <div class="form-group">
                     <label class="control-label bold">Renewal Pitch Message:</label>
-                    <textarea id="pitch_message_body" class="form-control" rows="12"></textarea>
+                    <textarea id="pitch_message_body" class="form-control" rows="12" style="font-family: monospace; font-size: 12px; background: #fffcf5;"></textarea>
                 </div>
 
                 <div id="pitch_send_feedback" class="alert hide"></div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('close'); ?></button>
-                <button type="button" class="btn btn-default" onclick="copy_pitch_to_clipboard();">
-                    <i class="fa fa-copy"></i> Copy to Clipboard
-                </button>
-                <button type="button" class="btn btn-success" id="btn_send_pitch" onclick="send_pitch_email_ajax();">
-                    <i class="fa fa-paper-plane"></i> Send Renewal Pitch Email Now
-                </button>
+            <div class="modal-footer display-flex justify-between align-center">
+                <span class="text-muted font-xs">
+                    <i class="fa fa-info-circle text-info"></i> Edit pitch text directly or copy to paste in your email client.
+                </span>
+                <div>
+                    <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('close'); ?></button>
+                    <button type="button" class="btn btn-default" onclick="copy_pitch_to_clipboard();">
+                        <i class="fa fa-copy"></i> Copy to Clipboard
+                    </button>
+                    <button type="button" class="btn btn-success bold" id="btn_send_pitch" onclick="send_pitch_email_ajax();">
+                        <i class="fa fa-paper-plane"></i> Send Renewal Pitch Email
+                    </button>
+                </div>
             </div>
         </div>
     </div>

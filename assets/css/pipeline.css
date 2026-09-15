@@ -296,3 +296,70 @@
     vertical-align: middle;
     border-top: 1px solid #f1f5f9;
 }
+
+/* 8. Modals & Polish */
+.modal-header {
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    padding: 14px 18px;
+}
+
+.modal-header.bg-primary {
+    background-color: #0288d1 !important;
+    color: #fff !important;
+}
+
+.modal-header.bg-success {
+    background-color: #10b981 !important;
+    color: #fff !important;
+}
+
+.modal-header.bg-warning {
+    background-color: #f59e0b !important;
+    color: #fff !important;
+}
+
+.modal-header.bg-danger {
+    background-color: #ef4444 !important;
+    color: #fff !important;
+}
+
+.modal-header.bg-info {
+    background-color: #0284c7 !important;
+    color: #fff !important;
+}
+
+.modal-header .close {
+    font-size: 24px;
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+.modal-header .close:hover {
+    opacity: 1;
+}
+
+.modal-footer {
+    border-top: 1px solid #e2e8f0;
+    padding: 12px 18px;
+    background: #f8fafc;
+    border-bottom-left-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+/* 9. Responsive Adjustments */
+@media (max-width: 991px) {
+    .ckm-command-bar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+    .ckm-toolbar-left, .ckm-toolbar-right {
+        flex-wrap: wrap !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+    }
+    .ckm-live-search-box {
+        width: 100% !important;
+        margin-bottom: 8px;
+    }
+}
