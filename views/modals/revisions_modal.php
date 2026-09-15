@@ -156,17 +156,38 @@ function load_revisions_data(jobId) {
             if (rev.status === 'Recorded') statusBadge = '<span class="badge bg-info">Recorded</span>';
             if (rev.status === 'Delivered') statusBadge = '<span class="badge bg-success">Delivered</span>';
 
+            var quickStatusBtns = '<div class="btn-group btn-group-xs">' +
+                '<button type="button" class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">' +
+                statusBadge + ' <span class="caret"></span>' +
+                '</button>' +
+                '<ul class="dropdown-menu dropdown-menu-right font-xs">' +
+                '<li><a href="#" onclick="update_revision_status(' + rev.id + ', \'Pending\', ' + jobId + '); return false;"><i class="fa fa-clock-o text-warning"></i> Set as Pending</a></li>' +
+                '<li><a href="#" onclick="update_revision_status(' + rev.id + ', \'Recorded\', ' + jobId + '); return false;"><i class="fa fa-microphone text-info"></i> Set as Recorded</a></li>' +
+                '<li><a href="#" onclick="update_revision_status(' + rev.id + ', \'Delivered\', ' + jobId + '); return false;"><i class="fa fa-check text-success"></i> Set as Delivered</a></li>' +
+                '</ul></div>';
+
             var row = '<tr>' +
                 '<td class="bold text-center">Round ' + rev.round_number + '</td>' +
                 '<td>' + rev.revision_type + '</td>' +
                 '<td><code>' + (rev.timecodes || 'Full Track') + '</code></td>' +
                 '<td>' + (rev.notes || '<span class="text-muted">No notes</span>') + '</td>' +
                 '<td class="bold text-success">' + (parseFloat(rev.fee) > 0 ? ('+' + rev.fee) : 'Free') + '</td>' +
-                '<td>' + statusBadge + '</td>' +
-                '<td class="text-center"><a href="#" onclick="delete_revision_round(' + rev.id + ', ' + jobId + '); return false;" class="text-danger"><i class="fa fa-trash"></i></a></td>' +
+                '<td>' + quickStatusBtns + '</td>' +
+                '<td class="text-center"><a href="#" onclick="delete_revision_round(' + rev.id + ', ' + jobId + '); return false;" class="text-danger" title="Delete pickup"><i class="fa fa-trash"></i></a></td>' +
                 '</tr>';
             tbody.append(row);
         });
+    });
+}
+
+function update_revision_status(revId, newStatus, jobId) {
+    $.post(admin_url + 'ckm_talent_pipeline/save_revision', {
+        id: revId,
+        job_id: jobId,
+        status: newStatus
+    }, function() {
+        alert_float('success', 'Pickup status updated to ' + newStatus);
+        load_revisions_data(jobId);
     });
 }
 

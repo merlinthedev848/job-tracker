@@ -42,9 +42,32 @@
                                 <h4 class="bold mbot15 text-primary"><i class="fa fa-sliders"></i> Project Parameters</h4>
                                 
                                 <div class="form-group">
-                                    <label class="control-label bold">Word Count:</label>
-                                    <input type="number" id="calc_words" class="form-control" value="250" placeholder="e.g. 250">
-                                    <small class="text-muted">Estimated Duration: <strong id="calc_est_time" class="text-info">~1 min 40 sec</strong> (at 150 wpm)</small>
+                                    <label class="control-label bold">Word Count & Delivery Pacing:</label>
+                                    <div class="row">
+                                        <div class="col-xs-6">
+                                            <input type="number" id="calc_words" class="form-control" value="250" placeholder="e.g. 250">
+                                        </div>
+                                        <div class="col-xs-6">
+                                            <select id="calc_pacing" class="form-control">
+                                                <option value="130">Slow / Dramatic (130 WPM)</option>
+                                                <option value="150" selected>Conversational (150 WPM)</option>
+                                                <option value="175">Fast / Commercial (175 WPM)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">Estimated Duration: <strong id="calc_est_time" class="text-info">~1 min 40 sec</strong></small>
+                                </div>
+
+                                <!-- Quick Rate Preset Buttons -->
+                                <div class="form-group mbot15">
+                                    <label class="control-label font-xs bold text-muted block">1-Click GVAA & Industry Presets:</label>
+                                    <div class="display-flex flex-wrap gap-5">
+                                        <button type="button" class="btn btn-default btn-xs" onclick="apply_rate_preset('tv_national');">📺 National TV (1yr)</button>
+                                        <button type="button" class="btn btn-default btn-xs" onclick="apply_rate_preset('paid_social');">📱 Paid Social (3mo)</button>
+                                        <button type="button" class="btn btn-default btn-xs" onclick="apply_rate_preset('corp_explainer');">🏢 Corp Explainer</button>
+                                        <button type="button" class="btn btn-default btn-xs" onclick="apply_rate_preset('game_principal');">🎮 Game Principal</button>
+                                        <button type="button" class="btn btn-default btn-xs" onclick="apply_rate_preset('elearning_module');">🎓 E-Learning</button>
+                                    </div>
                                 </div>
 
                                 <div class="form-group">
@@ -72,9 +95,19 @@
                                     </select>
                                 </div>
 
-                                <div class="form-group">
-                                    <label class="control-label bold">Agent / Platform Commission (%):</label>
-                                    <input type="number" id="calc_commission" class="form-control" value="20" min="0" max="100">
+                                <div class="row">
+                                    <div class="col-xs-6">
+                                        <div class="form-group">
+                                            <label class="control-label bold">Commission (%):</label>
+                                            <input type="number" id="calc_commission" class="form-control" value="20" min="0" max="100">
+                                        </div>
+                                    </div>
+                                    <div class="col-xs-6">
+                                        <div class="form-group">
+                                            <label class="control-label bold">Tax Reserve (%):</label>
+                                            <input type="number" id="calc_tax_reserve_rate" class="form-control" value="25" min="0" max="100">
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -95,9 +128,12 @@
                                             <span class="text-muted text-uppercase block font-xs">Gross Quote Total</span>
                                             <h2 id="calc_gross_display" class="bold text-success mtop5 mbot0">£250.00</h2>
                                         </div>
-                                        <div class="alert alert-success p10 mbot0">
+                                        <div class="alert alert-success p10 mbot10">
                                             <span class="font-xs bold">Your Net Take-Home (After Comm):</span>
                                             <h4 id="calc_net_display" class="bold mtop5 mbot0">£200.00</h4>
+                                        </div>
+                                        <div class="alert alert-info p8 font-xs mbot0">
+                                            <i class="fa fa-bank"></i> Recommended Tax Reserve: <strong id="calc_tax_reserve_display">£50.00</strong> (<span id="calc_tax_pct_label">25</span>%)
                                         </div>
                                     </div>
                                 </div>

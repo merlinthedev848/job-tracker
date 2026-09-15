@@ -235,6 +235,45 @@
                                     </div>
                                 </div>
 
+                                <!-- VO Tax Reserve & Self-Employment Health Card -->
+                                <?php 
+                                $ytd_net_income = floatval($summary['year_revenue'] ?? 0);
+                                $ytd_deductions = floatval($expense_summary['year_expenses'] ?? 0);
+                                $ytd_taxable_profit = max(0, $ytd_net_income - $ytd_deductions);
+                                $tax_reserve_pct = 25;
+                                $ytd_tax_reserve = $ytd_taxable_profit * ($tax_reserve_pct / 100);
+                                ?>
+                                <div class="panel panel-info mbot20">
+                                    <div class="panel-heading bold display-flex justify-between align-center">
+                                        <span><i class="fa fa-university text-info"></i> VO Studio Tax Reserve & Net Profit Health Estimator</span>
+                                        <span class="badge bg-info">Safe Harbor Reserve ~25%</span>
+                                    </div>
+                                    <div class="panel-body p15">
+                                        <div class="row text-center">
+                                            <div class="col-md-3 border-right">
+                                                <span class="text-muted font-xs text-uppercase block">YTD Net Voice Income</span>
+                                                <h4 class="bold text-success mtop5 mbot0"><?php echo ckm_format_money($ytd_net_income); ?></h4>
+                                                <small class="text-muted font-xs">After agent commission</small>
+                                            </div>
+                                            <div class="col-md-3 border-right">
+                                                <span class="text-muted font-xs text-uppercase block">YTD Studio Deductions</span>
+                                                <h4 class="bold text-danger mtop5 mbot0">-<?php echo ckm_format_money($ytd_deductions); ?></h4>
+                                                <small class="text-muted font-xs">Gear, subs & training</small>
+                                            </div>
+                                            <div class="col-md-3 border-right">
+                                                <span class="text-muted font-xs text-uppercase block">Taxable Self-Employed Profit</span>
+                                                <h4 class="bold text-primary mtop5 mbot0"><?php echo ckm_format_money($ytd_taxable_profit); ?></h4>
+                                                <small class="text-muted font-xs">Net income minus expenses</small>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <span class="text-muted font-xs text-uppercase block">Recommended Tax Set-Aside</span>
+                                                <h4 class="bold text-warning mtop5 mbot0"><?php echo ckm_format_money($ytd_tax_reserve); ?></h4>
+                                                <small class="text-muted font-xs">Set aside into tax savings account</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="row">
                                     <div class="col-md-7">
                                         <div class="panel panel-default">

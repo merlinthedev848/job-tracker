@@ -11,11 +11,28 @@ class Ckm_talent_pipeline_model extends App_Model
     }
 
     /**
-     * Self-healing DB table installer
+     * Self-healing DB table installer & schema integrity check
      */
     public function check_database_tables()
     {
-        if (!$this->db->table_exists(db_prefix() . 'ckm_talent_jobs') || !$this->db->table_exists(db_prefix() . 'ckm_talent_potentials')) {
+        $tables = [
+            'ckm_talent_jobs',
+            'ckm_talent_potentials',
+            'ckm_talent_categories',
+            'ckm_talent_sources',
+            'ckm_talent_loss_reasons',
+            'ckm_talent_job_revisions',
+            'ckm_talent_agents',
+            'ckm_talent_expenses'
+        ];
+        $needs_install = false;
+        foreach ($tables as $tbl) {
+            if (!$this->db->table_exists(db_prefix() . $tbl)) {
+                $needs_install = true;
+                break;
+            }
+        }
+        if ($needs_install || !$this->db->field_exists('ai_rider_included', db_prefix() . 'ckm_talent_jobs') || !$this->db->field_exists('script_text', db_prefix() . 'ckm_talent_jobs')) {
             if (file_exists(__DIR__ . '/../install.php')) {
                 require_once(__DIR__ . '/../install.php');
             }
@@ -585,33 +602,72 @@ class Ckm_talent_pipeline_model extends App_Model
     }
 
     /**
-     * Generate Auto Quotation Draft Response
+     * Generate Auto Quotation Draft Response by Template
      */
-    public function generate_auto_quote_text($potential_id)
+    public function generate_auto_quote_text($potential_id, $template_type = 'standard')
     {
         $this->db->where('id', $potential_id);
         $p = $this->db->get(db_prefix() . 'ckm_talent_potentials')->row();
         if (!$p) return '';
 
         $salutation = !empty($p->from_name) ? "Hi " . explode(' ', $p->from_name)[0] . "," : "Hi there,";
-        $bsf = ($p->parsed_bsf > 0) ? "£" . number_format($p->parsed_bsf, 2) : "£300.00";
-        $usage = ($p->parsed_usage > 0) ? "£" . number_format($p->parsed_usage, 2) : "Included / To be confirmed";
-        $total = ($p->parsed_bsf > 0 || $p->parsed_usage > 0) ? "£" . number_format($p->parsed_bsf + $p->parsed_usage, 2) : "£300.00";
+        $title = $p->parsed_title ?: $p->subject;
+        $role = $p->parsed_role ?: 'Voice Talent / Performer';
+        $actor_name = get_option('ckm_tp_actor_name') ?: (get_staff_full_name(get_staff_user_id()) ?: 'Voice Actor');
 
-        $draft = "$salutation\n\n" .
-                 "Thank you for reaching out regarding the \"{$p->parsed_title}\" project!\n\n" .
-                 "I would be delighted to provide voice-over services for the role of {$p->parsed_role}.\n\n" .
-                 "--- QUOTE & USAGE BREAKDOWN ---\n" .
-                 "• Basic Session Fee (BSF): $bsf\n" .
-                 "• Licensing & Usage Rights: $usage\n" .
-                 "• Total Proposed Rate: $total\n" .
-                 "• Studio Delivery Specs: 48kHz / 24-bit Broadcast Quality WAV (Raw or Edited)\n" .
-                 "• Live Direction Available via: Cleanfeed / Source-Connect / Zoom\n\n" .
-                 "Please let me know if this works for your schedule, and I will reserve studio time accordingly.\n\n" .
-                 "Best regards,\n" .
-                 get_staff_full_name(get_staff_user_id());
+        $bsf_val = ($p->parsed_bsf > 0) ? (float)$p->parsed_bsf : 300.00;
+        $usage_val = ($p->parsed_usage > 0) ? (float)$p->parsed_usage : 0.00;
+        $bsf = "£" . number_format($bsf_val, 2);
+        $usage = ($usage_val > 0) ? "£" . number_format($usage_val, 2) : "Included / To be confirmed based on territory";
+        $total = "£" . number_format($bsf_val + $usage_val, 2);
 
-        return $draft;
+        if ($template_type === 'availability') {
+            return "$salutation\n\n" .
+                   "Thank you for reaching out regarding \"$title\"!\n\n" .
+                   "I am writing to confirm my immediate availability for the role of $role. My acoustically treated broadcast home studio is ready to record with fast turnaround.\n\n" .
+                   "• Audio Delivery: 48kHz / 24-bit broadcast WAV\n" .
+                   "• Remote Direction: Cleanfeed Pro / Source-Connect / Zoom / Riverside\n\n" .
+                   "Please send over the final script and directions, and I will be glad to record this for you.\n\n" .
+                   "Best regards,\n" .
+                   $actor_name;
+        }
+
+        if ($template_type === 'counter') {
+            return "$salutation\n\n" .
+                   "Thank you for considering me for \"$title\"!\n\n" .
+                   "I would love to voice the role of $role. Based on the script scope and intended distribution, my standard rate card for this category is:\n\n" .
+                   "• Basic Session Fee (BSF): $bsf\n" .
+                   "• Buyout & Usage: $usage\n" .
+                   "• Total Fee: $total\n\n" .
+                   "This quote includes raw broadcast-quality WAV files, 1 round of pickup tweaks, and live remote direction. Standard NAVA AI protection applies.\n\n" .
+                   "Please let me know if this works for your production budget.\n\n" .
+                   "Best regards,\n" .
+                   $actor_name;
+        }
+
+        if ($template_type === 'decline') {
+            return "$salutation\n\n" .
+                   "Thank you very much for thinking of me for \"$title\"!\n\n" .
+                   "Unfortunately, due to existing studio commitments, I am unavailable for this specific recording window and will need to pass on this occasion.\n\n" .
+                   "I really appreciate you reaching out and would love to collaborate on future projects. Please feel free to keep me on your casting roster.\n\n" .
+                   "Best regards,\n" .
+                   $actor_name;
+        }
+
+        // Standard Full Quote
+        return "$salutation\n\n" .
+               "Thank you for reaching out regarding the \"$title\" project!\n\n" .
+               "I would be delighted to provide voice-over services for the role of $role.\n\n" .
+               "--- QUOTE & USAGE BREAKDOWN ---\n" .
+               "• Basic Session Fee (BSF): $bsf\n" .
+               "• Licensing & Usage Rights: $usage\n" .
+               "• Total Proposed Rate: $total\n" .
+               "• Studio Delivery Specs: 48kHz / 24-bit Broadcast Quality WAV (Raw or Edited)\n" .
+               "• Live Direction Available via: Cleanfeed / Source-Connect / Zoom\n" .
+               "• Standard NAVA AI Protection Rider Included\n\n" .
+               "Please let me know if this works for your schedule, and I will reserve studio time accordingly.\n\n" .
+               "Best regards,\n" .
+               $actor_name;
     }
 
     /**
@@ -740,7 +796,7 @@ class Ckm_talent_pipeline_model extends App_Model
         $this->db->where('id', $id);
         $this->db->update(db_prefix() . 'ckm_talent_jobs', $data);
 
-        return $this->db->affected_rows() > 0;
+        return true;
     }
 
     /**
@@ -1378,18 +1434,32 @@ class Ckm_talent_pipeline_model extends App_Model
     }
 
     /**
-     * Get NAVA AI & Synthetic Voice Protection Rider Text
+     * Get NAVA AI & Synthetic Voice Protection Rider Text (3 Protection Tiers)
      */
-    public function get_nava_rider_text($job_id = null)
+    public function get_nava_rider_text($job_id = null, $tier = 'commercial')
     {
         $actor_name = get_option('ckm_tp_actor_name') ?: (get_option('companyname') ?: 'Voice Talent');
         
-        $rider = "--- SYNTHETIC VOICE & ARTIFICIAL INTELLIGENCE (AI) PROTECTION RIDER ---\n"
-               . "1. EXCLUSIVE PURPOSE: Client expressly agrees that all voice recordings, stems, and performances delivered by " . $actor_name . " are licensed solely and exclusively for the explicit project, medium, territory, and term specified in this agreement.\n"
-               . "2. PROHIBITION OF AI / MACHINE LEARNING TRAINING: Under no circumstances shall the audio, likeness, or vocal performance data be used to train, develop, fine-tune, simulate, or create Artificial Intelligence (AI), Machine Learning (ML), synthetic voices, digital replicas, text-to-speech (TTS) engines, or voice clones without separate, explicit, prior written consent and negotiated compensation.\n"
-               . "3. NAVA STANDARD COMPLIANCE: This clause incorporates the National Association of Voice Actors (NAVA) AI & Synthetic Voice Protection Standards.";
+        if ($tier === 'gaming') {
+            return "--- NAVA 4.0 SYNTHETIC VOICE RIDER (INTERACTIVE, GAMES & ANIMATION) ---\n"
+                 . "1. SCOPE OF GRANT: Performance, voice stems, and character vocal assets provided by " . $actor_name . " are licensed exclusively for use within the specific game, interactive title, or animated production named in this agreement.\n"
+                 . "2. IN-GAME GENERATIVE AI PROHIBITION: Client agrees that voice assets shall NOT be ingested into runtime generative AI systems, dynamic text-to-speech engines, or real-time voice synthesizers to generate unscripted dialogue without explicit written rider and union/paymaster parity.\n"
+                 . "3. TRAINING RESTRICTION: No vocal data may be utilized for training deep learning or foundational voice models.\n"
+                 . "4. STANDARDS: Compliant with NAVA 4.0 Interactive & Video Game Rider Guidelines.";
+        }
 
-        return $rider;
+        if ($tier === 'strict') {
+            return "--- STRICT ZERO-AI OPT-OUT CLAUSE (UK CDPA §29A & US COPYRIGHT) ---\n"
+                 . "1. STATUTORY OPT-OUT: Performer (" . $actor_name . ") hereby explicitly reserves all rights and opts out of any Text & Data Mining (TDM), Machine Learning ingestion, artificial intelligence training, or digital simulation under all applicable copyright and performance statutes.\n"
+                 . "2. ABSOLUTE PROHIBITION: Ingestion of delivered audio or video files into any generative AI pipeline, voice cloning tool, or automated dubbing model is strictly prohibited and constitutes a material breach of contract with liquidated damages.\n"
+                 . "3. MORAL RIGHTS & BIOMETRICS: Performer strictly retains all biometric rights to their vocal frequency, cadence, and likeness in perpetuity.";
+        }
+
+        // Standard Commercial Tier
+        return "--- SYNTHETIC VOICE & ARTIFICIAL INTELLIGENCE (AI) PROTECTION RIDER ---\n"
+             . "1. EXCLUSIVE PURPOSE: Client expressly agrees that all voice recordings, stems, and performances delivered by " . $actor_name . " are licensed solely and exclusively for the explicit project, medium, territory, and term specified in this agreement.\n"
+             . "2. PROHIBITION OF AI / MACHINE LEARNING TRAINING: Under no circumstances shall the audio, likeness, or vocal performance data be used to train, develop, fine-tune, simulate, or create Artificial Intelligence (AI), Machine Learning (ML), synthetic voices, digital replicas, text-to-speech (TTS) engines, or voice clones without separate, explicit, prior written consent and negotiated compensation.\n"
+             . "3. NAVA STANDARD COMPLIANCE: This clause incorporates the National Association of Voice Actors (NAVA 4.0) AI & Synthetic Voice Protection Standards.";
     }
 
     /**

@@ -30,20 +30,23 @@
                     </p>
 
                     <?php echo form_open(admin_url('ckm_talent_pipeline/bulk_potentials'), ['id' => 'bulk_potentials_form']); ?>
-                    <div class="display-flex justify-between align-center mbot10">
+                    <div class="display-flex justify-between align-center mbot10 flex-wrap gap-10">
                         <div class="display-flex align-center">
                             <select name="bulk_action" class="form-control input-sm mright10" style="width: 170px;">
                                 <option value="">-- Bulk Action --</option>
                                 <option value="accept">Accept Selected</option>
                                 <option value="dismiss">Dismiss Selected</option>
                             </select>
-                            <button type="submit" class="btn btn-default btn-sm">Apply</button>
+                            <button type="submit" class="btn btn-default btn-sm mright10">Apply</button>
+                            <span class="text-muted font-xs">Showing <span id="potentials_count_display"><?php echo count($potentials); ?></span> inquiry(ies)</span>
                         </div>
-                        <span class="text-muted font-xs">Showing <?php echo count($potentials); ?> pending inquiry(ies)</span>
+                        <div>
+                            <input type="text" id="potential_search_filter" class="form-control input-sm" placeholder="🔍 Search sender, project, role..." style="width: 250px;" onkeyup="filter_potentials_table(this.value);">
+                        </div>
                     </div>
 
                     <div class="table-responsive">
-                        <table class="table table-bordered table-hover">
+                        <table class="table table-bordered table-hover" id="potentials_data_table">
                             <thead>
                                 <tr class="active">
                                     <th width="30" class="text-center"><input type="checkbox" id="select_all_potentials" onclick="$('.pot-checkbox').prop('checked', this.checked);"></th>
@@ -62,7 +65,7 @@
                                 foreach ($potentials as $pot) { 
                                     $is_suspect = $CI->ckm_talent_pipeline_model->is_spam_or_autoreply($pot['from_name'], $pot['from_email'], $pot['subject'], $pot['raw_body']);
                                 ?>
-                                    <tr class="<?php echo $is_suspect ? 'bg-warning-light' : ''; ?>">
+                                    <tr class="potential-row <?php echo $is_suspect ? 'bg-warning-light' : ''; ?>" data-search="<?php echo htmlspecialchars(strtolower($pot['from_name'] . ' ' . $pot['from_email'] . ' ' . $pot['parsed_title'] . ' ' . $pot['subject'] . ' ' . $pot['parsed_role'])); ?>">
                                         <td class="text-center">
                                             <input type="checkbox" name="potential_ids[]" value="<?php echo $pot['id']; ?>" class="pot-checkbox">
                                         </td>
@@ -91,7 +94,7 @@
                                         <td>
                                             <?php if ($pot['parsed_bsf'] > 0) { ?>
                                                 <span class="bold text-success font-xs">
-                                                    BSF: <?php echo ckm_format_money($pot['parsed_bsf']); ?>
+                                                     BSF: <?php echo ckm_format_money($pot['parsed_bsf']); ?>
                                                 </span>
                                             <?php } else { ?>
                                                 <span class="text-muted font-xs">BSF: TBD</span>
@@ -115,7 +118,7 @@
                                         </td>
                                     </tr>
                                     <!-- Email Raw Snippet Drawer -->
-                                    <tr class="bg-light">
+                                    <tr class="potential-drawer-row bg-light">
                                         <td colspan="8" class="font-xs p10" style="background: #f8fafc;">
                                             <details>
                                                 <summary class="text-primary bold cursor-pointer"><i class="fa fa-eye"></i> View Original Email Snippet & Script Notes</summary>
@@ -152,10 +155,22 @@
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
                 <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
-                <h4 class="modal-title text-white"><i class="fa fa-paper-plane"></i> <strong>Automated Quotation Response Dispatch</strong></h4>
+                <h4 class="modal-title text-white"><i class="fa fa-paper-plane"></i> <strong>Automated Quotation & Response Engine</strong></h4>
             </div>
-            <div class="modal-body">
+            <div class="modal-body p20">
                 <input type="hidden" id="quote_potential_id" value="">
+                
+                <!-- Quote Template Selector Bar -->
+                <div class="form-group bg-light p10 border rounded mbot15">
+                    <label class="control-label bold font-xs text-uppercase text-muted"><i class="fa fa-magic"></i> Response Template:</label>
+                    <select id="quote_template_selector" class="form-control input-sm" onchange="load_auto_quote_template();">
+                        <option value="standard" selected>📄 Standard Professional Quote (BSF + Usage + NAVA Rider)</option>
+                        <option value="fast_avail">⚡ Fast Availability Check & Day Rate Confirmation</option>
+                        <option value="counter_offer">🤝 Rate Negotiation & Minimum Session Counter-Offer</option>
+                        <option value="decline_polite">⛔ Polite Schedule Decline & Referral</option>
+                    </select>
+                </div>
+
                 <div class="row">
                     <div class="col-md-6">
                         <div class="form-group">
@@ -172,19 +187,67 @@
                 </div>
                 <div class="form-group">
                     <label class="control-label bold">Quote Email Message:</label>
-                    <textarea id="quote_message_body" class="form-control" rows="12"></textarea>
+                    <textarea id="quote_message_body" class="form-control" rows="12" style="font-family: monospace; font-size: 12px;"></textarea>
                 </div>
                 <div id="quote_send_feedback" class="alert hide"></div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('close'); ?></button>
-                <button type="button" class="btn btn-default" onclick="copy_quote_to_clipboard();">
-                    <i class="fa fa-copy"></i> Copy to Clipboard
-                </button>
-                <button type="button" class="btn btn-success" id="btn_send_quote" onclick="send_quote_email_ajax();">
-                    <i class="fa fa-paper-plane"></i> Send Quotation Email Now
-                </button>
+            <div class="modal-footer display-flex justify-between align-center">
+                <span class="text-muted font-xs">
+                    <i class="fa fa-info-circle text-info"></i> Easily edit text or switch templates above before dispatching.
+                </span>
+                <div>
+                    <button type="button" class="btn btn-default" data-dismiss="modal"><?php echo _l('close'); ?></button>
+                    <button type="button" class="btn btn-default" onclick="copy_quote_to_clipboard();">
+                        <i class="fa fa-copy"></i> Copy to Clipboard
+                    </button>
+                    <button type="button" class="btn btn-success bold" id="btn_send_quote" onclick="send_quote_email_ajax();">
+                        <i class="fa fa-paper-plane"></i> Send Quotation Email
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+function filter_potentials_table(query) {
+    var q = (query || '').toLowerCase().trim();
+    var matchCount = 0;
+    $('#potentials_data_table tbody tr.potential-row').each(function() {
+        var row = $(this);
+        var drawer = row.next('tr.potential-drawer-row');
+        var searchData = row.attr('data-search') || '';
+        if (!q || searchData.indexOf(q) !== -1) {
+            row.show();
+            drawer.show();
+            matchCount++;
+        } else {
+            row.hide();
+            drawer.hide();
+        }
+    });
+    $('#potentials_count_display').text(matchCount);
+}
+
+function load_auto_quote_template() {
+    var potentialId = $('#quote_potential_id').val();
+    var template = $('#quote_template_selector').val() || 'standard';
+    if (!potentialId) return;
+
+    var templateSubjects = {
+        'standard': 'Voice Over Quote & Availability',
+        'fast_avail': 'Availability Confirmation - Voice Over',
+        'counter_offer': 'Voice Over Rate Proposal & Options',
+        'decline_polite': 'Voice Over Availability Update'
+    };
+    if (templateSubjects[template]) {
+        $('#quote_subject').val(templateSubjects[template]);
+    }
+
+    $.get(admin_url + 'ckm_talent_pipeline/get_auto_quote/' + potentialId + '?template=' + encodeURIComponent(template), function(res) {
+        if (res && res.quote_text) {
+            $('#quote_message_body').val(res.quote_text);
+        }
+    }, 'json');
+}
+</script>

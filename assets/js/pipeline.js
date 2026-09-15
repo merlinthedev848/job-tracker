@@ -348,19 +348,55 @@ function execute_smart_parser() {
  * Built-In VO Rate & Buyout Calculator Widget
  */
 function init_vo_rate_widget() {
-    $('#calc_words, #calc_genre, #calc_medium, #calc_commission').on('input change keyup', function() {
+    $('#calc_words, #calc_pacing, #calc_genre, #calc_medium, #calc_commission, #calc_tax_reserve_rate').on('input change keyup', function() {
         calculate_vo_rate_widget();
     });
     calculate_vo_rate_widget();
 }
 
+function apply_rate_preset(presetKey) {
+    if (presetKey === 'tv_national') {
+        $('#calc_genre').val('commercial');
+        $('#calc_words').val(75);
+        $('#calc_pacing').val(175);
+        $('#calc_medium').val('4.0');
+    } else if (presetKey === 'paid_social') {
+        $('#calc_genre').val('commercial');
+        $('#calc_words').val(120);
+        $('#calc_pacing').val(150);
+        $('#calc_medium').val('2.0');
+    } else if (presetKey === 'corp_explainer') {
+        $('#calc_genre').val('corporate');
+        $('#calc_words').val(450);
+        $('#calc_pacing').val(150);
+        $('#calc_medium').val('0');
+    } else if (presetKey === 'game_principal') {
+        $('#calc_genre').val('animation');
+        $('#calc_words').val(600);
+        $('#calc_pacing').val(130);
+        $('#calc_medium').val('1.0');
+    } else if (presetKey === 'elearning_module') {
+        $('#calc_genre').val('elearning');
+        $('#calc_words').val(1500);
+        $('#calc_pacing').val(150);
+        $('#calc_medium').val('0');
+    }
+
+    if ($.fn.selectpicker) {
+        $('#calc_genre, #calc_medium').selectpicker('refresh');
+    }
+    calculate_vo_rate_widget();
+}
+
 function calculate_vo_rate_widget() {
     var words = parseInt($('#calc_words').val()) || 0;
+    var pacing = parseInt($('#calc_pacing').val()) || 150;
     var baseBsf = parseFloat($('#calc_genre').find(':selected').data('bsf')) || 250;
     var usageMultiplier = parseFloat($('#calc_medium').val()) || 0;
     var commPercent = parseFloat($('#calc_commission').val()) || 0;
+    var taxRate = parseFloat($('#calc_tax_reserve_rate').val()) || 25;
 
-    var totalSeconds = Math.round((words / 150) * 60);
+    var totalSeconds = Math.round((words / pacing) * 60);
     var mins = Math.floor(totalSeconds / 60);
     var secs = totalSeconds % 60;
     var timeStr = (mins > 0 ? mins + ' min ' : '') + secs + ' sec';
@@ -375,11 +411,14 @@ function calculate_vo_rate_widget() {
     var calculatedUsage = calculatedBsf * usageMultiplier;
     var gross = calculatedBsf + calculatedUsage;
     var net = gross - ((gross * commPercent) / 100);
+    var taxReserve = net * (taxRate / 100);
 
     $('#calc_bsf_display').text('£' + calculatedBsf.toFixed(2));
     $('#calc_usage_display').text('£' + calculatedUsage.toFixed(2));
     $('#calc_gross_display').text('£' + gross.toFixed(2));
     $('#calc_net_display').text('£' + net.toFixed(2));
+    $('#calc_tax_reserve_display').text('£' + taxReserve.toFixed(2));
+    $('#calc_tax_pct_label').text(taxRate);
 }
 
 function apply_calculator_rates_to_job() {
@@ -408,11 +447,13 @@ function apply_calculator_rates_to_job() {
 function preview_auto_quote(potentialId, recipientEmail) {
     $('#quote_potential_id').val(potentialId || '');
     $('#quote_send_feedback').addClass('hide').removeClass('alert-success alert-danger').text('');
-    $('#btn_send_quote').prop('disabled', false).html('<i class="fa fa-paper-plane"></i> Send Quotation Email Now');
+    $('#btn_send_quote').prop('disabled', false).html('<i class="fa fa-paper-plane"></i> Send Quotation Email');
+    $('#quote_template_selector').val('standard');
     
-    $.get(admin_url + 'ckm_talent_pipeline/get_auto_quote/' + potentialId, function(res) {
+    $.get(admin_url + 'ckm_talent_pipeline/get_auto_quote/' + potentialId + '?template=standard', function(res) {
         if (res && res.quote_text) {
             $('#quote_recipient').val(recipientEmail || '');
+            $('#quote_subject').val('Voice Over Quote & Availability');
             $('#quote_message_body').val(res.quote_text);
             $('#auto_quote_modal').modal('show');
         }

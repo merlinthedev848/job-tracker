@@ -199,7 +199,18 @@ class Ckm_talent_pipeline extends AdminController
     }
 
     /**
-     * Fetch Auto-Generated Quote Draft via AJAX
+     * Fetch Auto-Generated Quote Draft via AJAX by Template
+     */
+    public function get_auto_quote($potential_id)
+    {
+        if ($this->input->is_ajax_request()) {
+            $template = $this->input->get('template') ?: 'standard';
+            $quote_text = $this->ckm_talent_pipeline_model->generate_auto_quote_text($potential_id, $template);
+            echo json_encode(['quote_text' => $quote_text]);
+            die();
+        }
+    }
+
     /**
      * Fetch Auto-Generated Buyout Extension Pitch Draft
      */
@@ -655,12 +666,13 @@ class Ckm_talent_pipeline extends AdminController
     }
 
     /**
-     * Get NAVA AI Protection Rider Text via AJAX
+     * Get NAVA AI Protection Rider Text via AJAX (Support 3 Tiers)
      */
     public function get_nava_rider($job_id = null)
     {
         if ($this->input->is_ajax_request()) {
-            $text = $this->ckm_talent_pipeline_model->get_nava_rider_text($job_id);
+            $tier = $this->input->get('tier') ?: 'commercial';
+            $text = $this->ckm_talent_pipeline_model->get_nava_rider_text($job_id, $tier);
             echo json_encode(['rider_text' => $text]);
             die();
         }

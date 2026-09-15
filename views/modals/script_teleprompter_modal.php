@@ -20,27 +20,31 @@
                     <!-- Script Controls Toolbar -->
                     <div class="col-md-12 mbot15">
                         <div class="display-flex justify-between align-center flex-wrap p10 bg-light border" style="border-radius: 8px;">
-                            <div class="display-flex align-center gap-10">
+                            <div class="display-flex align-center gap-10 flex-wrap">
                                 <!-- Teleprompter Scroll Controller -->
-                                <button type="button" id="btn_teleprompter_play" class="btn btn-success btn-sm" onclick="toggle_teleprompter();">
+                                <button type="button" id="btn_teleprompter_play" class="btn btn-success btn-sm" onclick="toggle_teleprompter();" title="Shortcut: Spacebar">
                                     <i class="fa fa-play"></i> Auto-Scroll
                                 </button>
-                                <button type="button" class="btn btn-default btn-sm" onclick="reset_teleprompter();">
+                                <button type="button" class="btn btn-default btn-sm" onclick="reset_teleprompter();" title="Return to Top">
                                     <i class="fa fa-fast-backward"></i> Top
                                 </button>
-                                <div class="display-flex align-center mleft10">
+                                <div class="display-flex align-center mleft5">
                                     <span class="font-xs bold text-muted mright5">Speed:</span>
-                                    <input type="range" id="prompter_speed" min="1" max="10" value="3" style="width: 80px;">
+                                    <input type="range" id="prompter_speed" min="1" max="10" value="3" style="width: 75px;">
                                 </div>
-                                <div class="display-flex align-center mleft10">
+                                <div class="display-flex align-center mleft5">
                                     <span class="font-xs bold text-muted mright5">Font:</span>
                                     <button type="button" class="btn btn-default btn-xs" onclick="adjust_prompter_font(-2);"><i class="fa fa-minus"></i></button>
                                     <button type="button" class="btn btn-default btn-xs" onclick="adjust_prompter_font(2);"><i class="fa fa-plus"></i></button>
                                 </div>
+                                <div class="display-flex align-center gap-5 mleft5">
+                                    <span class="badge bg-light text-muted border font-xs" title="Press Space to Play/Pause Scroll"><kbd>Space</kbd> Scroll</span>
+                                    <span class="badge bg-light text-muted border font-xs" title="Press T to Mark Take"><kbd>T</kbd> Mark</span>
+                                </div>
                             </div>
 
                             <!-- Live Take Stopwatch & Marker -->
-                            <div class="display-flex align-center gap-10">
+                            <div class="display-flex align-center gap-10 flex-wrap">
                                 <span class="font-xs bold text-uppercase text-muted"><i class="fa fa-clock-o"></i> Take Timer:</span>
                                 <h3 id="prompter_timer_display" class="bold text-danger mtop0 mbot0 font-medium" style="font-family: monospace;">00:00.0</h3>
                                 <button type="button" id="btn_timer_toggle" class="btn btn-danger btn-xs" onclick="toggle_take_timer();">
@@ -49,9 +53,19 @@
                                 <button type="button" class="btn btn-default btn-xs" onclick="reset_take_timer();">
                                     <i class="fa fa-undo"></i>
                                 </button>
-                                <button type="button" class="btn btn-warning btn-xs bold" onclick="mark_current_take();" title="Log current timestamp and take number">
-                                    <i class="fa fa-bookmark"></i> Mark Take
-                                </button>
+                                <div class="btn-group">
+                                    <button type="button" class="btn btn-warning btn-xs bold" onclick="mark_current_take();" title="Shortcut: T key">
+                                        <i class="fa fa-bookmark"></i> Mark Take
+                                    </button>
+                                    <button type="button" class="btn btn-warning btn-xs dropdown-toggle" data-toggle="dropdown">
+                                        <span class="caret"></span>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-right font-xs">
+                                        <li><a href="#" onclick="mark_custom_take('Best Read / Master ⭐'); return false;"><i class="fa fa-star text-warning"></i> Mark Best Take ⭐</a></li>
+                                        <li><a href="#" onclick="mark_custom_take('Director Alternate Pick ⚡'); return false;"><i class="fa fa-bolt text-primary"></i> Mark Alternate Pick ⚡</a></li>
+                                        <li><a href="#" onclick="mark_custom_take('Pickup Needed (Line Stumble) 🔁'); return false;"><i class="fa fa-refresh text-danger"></i> Mark Pickup Needed 🔁</a></li>
+                                    </ul>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -198,10 +212,15 @@ function reset_take_timer() {
 }
 
 function mark_current_take() {
+    mark_custom_take('');
+}
+
+function mark_custom_take(customLabel) {
     var timeStr = $('#prompter_timer_display').text();
     var notesArea = $('#prompter_take_notes');
     var currentText = notesArea.val();
-    var logEntry = 'Take ' + takeCount + ' [' + timeStr + '] - ';
+    var label = customLabel ? ' - ' + customLabel : ' - ';
+    var logEntry = 'Take ' + takeCount + ' [' + timeStr + ']' + label;
     takeCount++;
     if (currentText.length > 0 && !currentText.endsWith('\n')) {
         currentText += '\n';
@@ -221,7 +240,10 @@ function calculate_prompter_stats() {
     var text = $('#teleprompter_text').text() || '';
     var words = text.trim().split(/\s+/).filter(function(w) { return w.length > 0; }).length;
     var estSeconds = Math.round((words / 150) * 60);
-    $('#prompter_word_count').text('Words: ~' + words + ' | Est: ~' + estSeconds + 's (at 150 WPM)');
+    var mins = Math.floor(estSeconds / 60);
+    var secs = estSeconds % 60;
+    var timeFormatted = (mins > 0 ? mins + 'm ' : '') + secs + 's';
+    $('#prompter_word_count').text('Words: ~' + words + ' | Est: ~' + timeFormatted + ' (at 150 WPM)');
 }
 
 function open_teleprompter_for_job(jobId, jobTitle, scriptText, notesText) {
@@ -274,5 +296,29 @@ function export_prompter_take_sheet() {
 
 $(document).ready(function() {
     calculate_prompter_stats();
+
+    // Hotkey bindings when teleprompter modal is active
+    $(document).on('keydown', function(e) {
+        if (!$('#script_teleprompter_modal').hasClass('in')) return;
+        var tag = (e.target.tagName || '').toLowerCase();
+        var isEditing = (tag === 'input' || tag === 'textarea' || $(e.target).attr('contenteditable') === 'true');
+
+        // Spacebar toggles teleprompter if not actively typing inside input/textarea
+        if (e.which === 32 && tag !== 'input' && tag !== 'textarea') {
+            e.preventDefault();
+            toggle_teleprompter();
+        } else if ((e.key === 't' || e.key === 'T') && !isEditing) {
+            e.preventDefault();
+            mark_current_take();
+        } else if (e.which === 38 && !isEditing) { // Up arrow increases speed
+            e.preventDefault();
+            var sp = Math.min(10, parseInt($('#prompter_speed').val()) + 1);
+            $('#prompter_speed').val(sp);
+        } else if (e.which === 40 && !isEditing) { // Down arrow decreases speed
+            e.preventDefault();
+            var sp2 = Math.max(1, parseInt($('#prompter_speed').val()) - 1);
+            $('#prompter_speed').val(sp2);
+        }
+    });
 });
 </script>
